@@ -1,3 +1,6 @@
+#ifndef HASHER_CXX
+#define HASHER_CXX
+
 #include "hasher.hxx"
 #include <glibmm/thread.h>
 #include <iostream>
@@ -31,15 +34,15 @@ void Derp::Hasher::hash_file(const Glib::RefPtr<Gio::File>& file) {
     gsize length;
     if (file->load_contents(contents, length)) {
       Glib::ustring md5hex = Glib::Checksum::compute_checksum(Glib::Checksum::ChecksumType::CHECKSUM_MD5, reinterpret_cast<guchar*>(contents), length);
-      insert_hash(md5hex);
+      insert_image({file->get_path(), md5hex});
       insert_filepath(file->get_path());
       g_free(contents);
     }
 }
 
-void Derp::Hasher::insert_hash(const Glib::ustring& hash) {
+void Derp::Hasher::insert_image(const Derp::Image& image) {
   Glib::Mutex::Lock lock(hash_mutex);
-  m_hash_set.insert(hash);
+  m_image_set.insert(image);
 }
 
 void Derp::Hasher::insert_filepath(const std::string& path) {
@@ -52,7 +55,9 @@ bool Derp::Hasher::is_hashed(const std::string& path) {
   return m_filepath_set.count(path) > 0;
 }
 
-bool Derp::Hasher::is_downloaded(const Glib::ustring& hash) {
+bool Derp::Hasher::is_downloaded(const Derp::Image& image) {
   Glib::Mutex::Lock lock(hash_mutex);
-  return m_hash_set.count(hash) > 0;
+  return m_image_set.count(image) > 0;
 }
+
+#endif

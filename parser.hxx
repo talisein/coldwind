@@ -1,52 +1,43 @@
 #ifndef PARSER_HXX
 #define PARSER_HXX
-#include <glibmm.h>
-#include <giomm.h>
+
 #include <libxml/HTMLparser.h>
-#include <set>
+#include <list>
+#include <map>
+#include <glibmm/ustring.h>
+#include "image.hxx"
+#include "downloader.hxx"
+#include "hasher.hxx"
 
 namespace Derp {
 
   class Parser
   {
   public:
-    explicit Parser();
+    Parser();
     ~Parser();
-    void parse_async(const Glib::ustring& url);
-    void on_start_element(Glib::ustring name, std::map<Glib::ustring, Glib::ustring> attr_map);
 
+    void parse_async(const Glib::ustring& url);
+    int request_downloads(Derp::Downloader& downloader, Derp::Hasher* const hasher, const std::string& path, int xDim = -1, int yDim = -1);
     Glib::Dispatcher signal_parsing_finished;
 
-    /**
-       This single function (below) is the worst part of this program
-       from a design perspective. We need it so that we can compare
-       against the hasher's results and produce a list for the
-       downloader. The real-world performance impact is pretty
-       negligable.
 
-       Ideally we should do something like
-       Downloader.download_async(filter(Hasher.is_downloaded_functor,
-                                        Parser.list))
-					
-       So far, my experiments at using <functional> have failed
-       though. In the future, I think I should look at refactoring
-       images_map by creating an Image class (that has an inner
-       attribute map). That would give a simpler list here, and the
-       Image class can define useful comparison functions.
-    **/
-    std::map<Glib::ustring, std::map<Glib::ustring, Glib::ustring>> get_image_sources() const { return images_map; };    
   private:
-
     Parser& operator=(const Parser&); // Evil func
     Parser(const Parser&); // Evil func
 
-    void parseThread(const Glib::ustring& url);
+    Glib::ustring curSourceUrl;
+    std::list<Derp::Image> m_images;
 
     htmlSAXHandlerPtr sax;
-    Glib::ustring curSourceUrl;
-    std::map<Glib::ustring, std::map<Glib::ustring, Glib::ustring>> images_map;
-    std::set<Glib::ustring> downloadedImages;
+    void parse_thread(const Glib::ustring& url);
+    void on_start_element(Glib::ustring name, std::map<Glib::ustring, Glib::ustring> attr_map);
+
+    friend void startElement(void* user_data, const xmlChar* name, const xmlChar** attrs);
   };
+
+  void startElement(void* user_data, const xmlChar* name, const xmlChar** attrs);
+
 }
 
 

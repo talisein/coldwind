@@ -1,11 +1,20 @@
-#include "parser.hxx"
-#include <curl/curl.h>
-#include <iostream>
-#include <cstdio>
 #include <glib.h>
+#include <iostream>
 #include <iomanip>
+#include <algorithm>
+#include "parser.hxx"
 
-static void m_startElement(void* user_data, const xmlChar* name, const xmlChar** attrs) {
+Derp::Parser::Parser() {
+  sax = (htmlSAXHandlerPtr) calloc(1, sizeof(htmlSAXHandler));
+  sax->startElement = &startElement;
+}
+
+Derp::Parser::~Parser() {
+  free(sax);
+}
+
+void Derp::startElement(void* user_data, const xmlChar* name, const xmlChar** attrs) {
+  Derp::Parser* parser = (Derp::Parser*) user_data;
   std::map<Glib::ustring, Glib::ustring> attr_map;
 
   int i = 0;
@@ -14,26 +23,15 @@ static void m_startElement(void* user_data, const xmlChar* name, const xmlChar**
     i += 2;
   }
   
-  Derp::Parser* parser = (Derp::Parser*) user_data;
   parser->on_start_element( reinterpret_cast<const char*>(name), attr_map );
 }
 
-Derp::Parser::Parser() {
-  sax = (htmlSAXHandlerPtr) calloc(1, sizeof(htmlSAXHandler));
-  sax->startElement = &m_startElement;
-}
-
-Derp::Parser::~Parser() {
-  free(sax);
-}
-
 void Derp::Parser::parse_async(const Glib::ustring& url) {
-  Glib::Thread::create( sigc::bind(sigc::mem_fun(this, &Parser::parseThread), url), false);
+  Glib::Thread::create( sigc::bind(sigc::mem_fun(this, &Parser::parse_thread), url), false);
 }
 
 
 void Derp::Parser::on_start_element(Glib::ustring name, std::map<Glib::ustring, Glib::ustring> attr_map) {
-
   // If this element contains an image source url, store it
   if (name.length() == 1 && name.find("a") != Glib::ustring::npos ) {
     if( attr_map.count("href") != 0 ) {
@@ -61,16 +59,27 @@ void Derp::Parser::on_start_element(Glib::ustring name, std::map<Glib::ustring, 
       st << std::setw(2) << static_cast<int>(md5_binary[i]);
     }
     g_free(md5_binary);
-    attr_map.insert({"md5hex", st.str()});
-    images_map.insert({curSourceUrl, attr_map});
+    m_images.push_back({curSourceUrl, st.str(), attr_map.find("alt")->second, attr_map.find("width")->second, attr_map.find("height")->second});
   }
 }
 
-void Derp::Parser::parseThread(const Glib::ustring& url) {
+/* Uses libxml to fetch the 4ch thread from the network. Parsing
+   happens in the SAX methods.
+ */
+void Derp::Parser::parse_thread(const Glib::ustring& url) {
   htmlSAXParseFile(url.c_str(), NULL, sax, this);
   signal_parsing_finished();
 }
 
+int Derp::Parser::request_downloads(Derp::Downloader& downloader, Derp::Hasher* const hasher_ptr, const std::string& path, int xDim, int yDim) {
+  std::list<Derp::Image> imgs;
+    
+  m_images.remove_if([hasher_ptr](Derp::Image img) { return hasher_ptr->is_downloaded(img); });
+  m_images.remove_if([xDim, yDim](Derp::Image img) { return !img.is_bigger(xDim, yDim); });
 
+  int count = m_images.size();
+  downloader.download_async(m_images, path);
+  return count;
+}
 
 

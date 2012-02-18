@@ -94,20 +94,11 @@ void Derp::Application::hashing_finished() {
 
 void Derp::Application::try_download() {
   if ( !is_parsing && !is_hashing ) {
-    auto map = m_parser.get_image_sources();
-    std::queue<Glib::ustring> sources;
-    for( auto it = map.begin(); it != map.end(); it++ ) {
-      if ( !m_hasher.is_downloaded(it->second.find("md5hex")->second) ) {
-	// todo: Other filtering here
-	sources.push(it->first);
-      }
-    }
-
-    if (!sources.empty()) {
-      num_downloading = sources.size();
-      num_downloaded = 0;
+    num_downloaded = 0;
+    int count = m_parser.request_downloads(m_downloader, &m_hasher, m_fileChooserButton->get_file()->get_path());
+    if (count > 0) {
+      num_downloading = count;
       update_progressBar();
-      m_downloader.download_async(sources, m_fileChooserButton->get_file()->get_path());
     }
   }
 }

@@ -37,7 +37,7 @@ link_directories(
 include_directories(
   ${GTKMM3_INCLUDE_DIRS} ${GTHREAD_LIBRARY_DIRS} ${XML++_INCLUDE_DIRS} ${CURL_INCLUDE_DIRS})
 
-add_executable(derp main.cxx parser.cxx application.cxx hasher.cxx downloader.cxx)
+add_executable(derp main.cxx parser.cxx application.cxx hasher.cxx downloader.cxx image.cxx)
 
 target_link_libraries(derp ${GTKMM3_LIBRARIES} ${GTHREAD_LIBRARIES} ${XML++_LIBRARIES} ${CURL_LIBRARIES})
 

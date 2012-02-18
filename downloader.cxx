@@ -5,17 +5,16 @@
 
 Derp::Downloader::Downloader() : m_threadPool(4) 
 {
-
 }
 
-void Derp::Downloader::download_async(const std::queue<Glib::ustring>& urls, const std::string& path) {
-  Glib::Thread::create( sigc::bind(sigc::mem_fun(*this, &Derp::Downloader::download_urls), urls, path), false);
+void Derp::Downloader::download_async(const std::list<Derp::Image>& imgs, const std::string& path) {
+  Glib::Thread::create( sigc::bind(sigc::mem_fun(*this, &Derp::Downloader::download_imgs), imgs, path), false);
 }
 
-void Derp::Downloader::download_urls(std::queue<Glib::ustring> urls, const std::string& path) {
-  while ( !urls.empty() ) {
-    m_threadPool.push(sigc::bind(sigc::mem_fun(*this, &Derp::Downloader::download_url), urls.front(), path ));
-    urls.pop();
+void Derp::Downloader::download_imgs(std::list<Derp::Image> imgs, const std::string& path) {
+  while ( !imgs.empty() ) {
+    m_threadPool.push(sigc::bind(sigc::mem_fun(*this, &Derp::Downloader::download_url), imgs.front().getUrl(), path ));
+    imgs.pop_front();
   }
 }
 
