@@ -16,7 +16,6 @@ namespace Derp {
   class Application {
   public:
     explicit Application(int argc, char *argv[]);
-    //    ~Application();
     void run();
 
   private:
@@ -39,7 +38,9 @@ namespace Derp {
     bool isGif;
     Gtk::ProgressBar* m_progressBar;
     Gtk::ToggleButton* m_goButton;
-    Gtk::Adjustment* m_lurkAdjustment;
+    Glib::RefPtr<Gtk::Adjustment> m_lurkAdjustment;
+    Glib::RefPtr<Gtk::Adjustment> m_xAdjustment;
+    Glib::RefPtr<Gtk::Adjustment> m_yAdjustment;
     Gtk::SpinButton* m_lurkSpinButton;
     Gtk::Entry* m_urlEntry;
     Gtk::FileChooserButton* m_fileChooserButton;
