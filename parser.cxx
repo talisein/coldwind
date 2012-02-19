@@ -34,6 +34,7 @@ void Derp::onCharacters(void* user_data, const xmlChar* chars, int len) {
 }
 
 void Derp::Parser::parse_async(const Glib::ustring& url) {
+  m_images.clear();
   Glib::Thread::create( sigc::bind(sigc::mem_fun(this, &Parser::parse_thread), url), false);
 }
 
