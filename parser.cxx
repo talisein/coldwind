@@ -88,7 +88,6 @@ void Derp::Parser::on_start_element(Glib::ustring name, std::map<Glib::ustring, 
       st << std::setw(2) << static_cast<int>(md5_binary[i]);
     }
     g_free(md5_binary);
-    std::cout << "seeing filename " << curOrigFilename << std::endl;
     m_images.push_back({curSourceUrl, st.str(), attr_map.find("alt")->second, curxDim, curyDim, curOrigFilename});
     curSourceUrl = "";
 
@@ -107,7 +106,7 @@ int Derp::Parser::request_downloads(Derp::Downloader& downloader, Derp::Hasher* 
   std::list<Derp::Image> imgs;
     
   m_images.remove_if([hasher_ptr](Derp::Image img) { return hasher_ptr->is_downloaded(img); });
-  std::cout << "Filtering out messages wider than " << xDim << " and taller than " << yDim << std::endl;
+
   m_images.remove_if([xDim, yDim](Derp::Image img) { return !img.is_bigger(xDim, yDim); });
 
   int count = m_images.size();
