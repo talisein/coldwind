@@ -1,16 +1,14 @@
 #include "image.hxx"
 #include <string>
 
-Derp::Image::Image(const Glib::ustring& uri, const Glib::ustring& md5hex, const Glib::ustring& size, const Glib::ustring& xDim, const Glib::ustring& yDim) : 
+Derp::Image::Image(const Glib::ustring& uri, const Glib::ustring& md5hex, const Glib::ustring& size, int xDim, int yDim, const Glib::ustring& origFilename) : 
   m_uri(uri),
   m_md5(md5hex),
-  m_size(size)
+  m_size(size),
+  m_x(xDim),
+  m_y(yDim),
+  m_original_filename(origFilename)
 {
-  std::stringstream st1, st2;
-  st1 << xDim;
-  st2 << yDim;
-  st1 >> m_x;
-  st2 >> m_y;
 }
 
 Derp::Image::Image(const std::string& filepath, const Glib::ustring& md5hex) :

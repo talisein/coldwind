@@ -26,18 +26,21 @@ namespace Derp {
     Parser& operator=(const Parser&); // Evil func
     Parser(const Parser&); // Evil func
 
-    Glib::ustring curSourceUrl;
+    Glib::ustring curSourceUrl, curOrigFilename;
+    int curxDim, curyDim;
     std::list<Derp::Image> m_images;
 
     htmlSAXHandlerPtr sax;
     void parse_thread(const Glib::ustring& url);
     void on_start_element(Glib::ustring name, std::map<Glib::ustring, Glib::ustring> attr_map);
+    void on_characters(const std::string&);
 
     friend void startElement(void* user_data, const xmlChar* name, const xmlChar** attrs);
+    friend void onCharacters(void* user_data, const xmlChar* chars, int len);
   };
 
   void startElement(void* user_data, const xmlChar* name, const xmlChar** attrs);
-
+  void onCharacters(void* user_data, const xmlChar* chars, int len);
 }
 
 

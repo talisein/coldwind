@@ -7,6 +7,7 @@
 Derp::Parser::Parser() {
   sax = (htmlSAXHandlerPtr) calloc(1, sizeof(htmlSAXHandler));
   sax->startElement = &startElement;
+  sax->characters = &onCharacters;
 }
 
 Derp::Parser::~Parser() {
@@ -26,10 +27,34 @@ void Derp::startElement(void* user_data, const xmlChar* name, const xmlChar** at
   parser->on_start_element( reinterpret_cast<const char*>(name), attr_map );
 }
 
+void Derp::onCharacters(void* user_data, const xmlChar* chars, int len) {
+  Derp::Parser* parser = static_cast<Derp::Parser*>(user_data);
+
+  parser->on_characters({reinterpret_cast<const char*>(chars),  len});
+}
+
 void Derp::Parser::parse_async(const Glib::ustring& url) {
   Glib::Thread::create( sigc::bind(sigc::mem_fun(this, &Parser::parse_thread), url), false);
 }
 
+void Derp::Parser::on_characters(const std::string& str) {
+  if ( curSourceUrl.size() > 0) {
+    size_t start = str.find(", ");
+    if (start != std::string::npos) {
+      start += 2;
+      size_t middle = str.find("x", start);
+      if (middle != std::string::npos) {
+	std::stringstream st1, st2;
+	st1 << str.substr(start, middle-start);
+	st1 >> curxDim;
+	middle += 1;
+	size_t end = str.find(",", middle);
+	st2 << str.substr(middle, end-middle);
+	st2 >> curyDim;
+      }
+    }
+  }
+}
 
 void Derp::Parser::on_start_element(Glib::ustring name, std::map<Glib::ustring, Glib::ustring> attr_map) {
   // If this element contains an image source url, store it
@@ -40,6 +65,10 @@ void Derp::Parser::on_start_element(Glib::ustring name, std::map<Glib::ustring, 
 	curSourceUrl = it->second;
       }
     }
+  }
+
+  if (name.find("span") != Glib::ustring::npos && attr_map.count("title") > 0) {
+    curOrigFilename = attr_map.find("title")->second;
   }
 
   // If this element is image metadata, insert it into our set 
@@ -59,7 +88,10 @@ void Derp::Parser::on_start_element(Glib::ustring name, std::map<Glib::ustring, 
       st << std::setw(2) << static_cast<int>(md5_binary[i]);
     }
     g_free(md5_binary);
-    m_images.push_back({curSourceUrl, st.str(), attr_map.find("alt")->second, attr_map.find("width")->second, attr_map.find("height")->second});
+    std::cout << "seeing filename " << curOrigFilename << std::endl;
+    m_images.push_back({curSourceUrl, st.str(), attr_map.find("alt")->second, curxDim, curyDim, curOrigFilename});
+    curSourceUrl = "";
+
   }
 }
 
@@ -75,6 +107,7 @@ int Derp::Parser::request_downloads(Derp::Downloader& downloader, Derp::Hasher* 
   std::list<Derp::Image> imgs;
     
   m_images.remove_if([hasher_ptr](Derp::Image img) { return hasher_ptr->is_downloaded(img); });
+  std::cout << "Filtering out messages wider than " << xDim << " and taller than " << yDim << std::endl;
   m_images.remove_if([xDim, yDim](Derp::Image img) { return !img.is_bigger(xDim, yDim); });
 
   int count = m_images.size();
