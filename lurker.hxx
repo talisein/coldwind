@@ -10,6 +10,8 @@ namespace Derp {
     Glib::ustring thread_url;
     Glib::RefPtr<Gio::File> target_directory;
     int minutes;
+    int xDim;
+    int yDim;
   };
 
   class Lurker {
@@ -17,7 +19,7 @@ namespace Derp {
     Lurker();
 
     void add_async(const Derp::Lurk_Data& data);
-    void run_async();
+    void run();
 
   private:
     Lurker(const Lurker&); // evil func
@@ -26,19 +28,20 @@ namespace Derp {
     void add(const Derp::Lurk_Data&);
     Glib::Mutex m_list_lock;
     std::list<Derp::Lurk_Data> m_list;
-
+    std::list<Derp::Lurk_Data>::iterator iter;
     void parsing_finished();
     void hashing_finished();
     void try_download();
     void download_finished();
     bool is_hashing, is_parsing;
-    int num_downloaded;
+    int num_downloading, num_downloaded, total_downloaded;
 
     Derp::Parser m_parser;
     Derp::Hasher m_hasher;
     Derp::Downloader m_downloader;
 
-    void run();
+    void iteration_next();
+    void iteration_finish();
   };
 }
 

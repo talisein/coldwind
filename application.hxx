@@ -28,6 +28,7 @@ namespace Derp {
     void hashing_finished();
     bool is_hashing, is_parsing;
     void try_download();
+    void downloads_finished();
 
     int num_downloading;
     int num_downloaded;

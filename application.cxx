@@ -42,7 +42,7 @@ Derp::Application::Application(int argc, char*argv[]) :
   m_parser.signal_parsing_finished.connect(sigc::mem_fun(*this, &Derp::Application::parsing_finished));
   m_hasher.signal_hashing_finished.connect(sigc::mem_fun(*this, &Derp::Application::hashing_finished));
   m_downloader.signal_download_finished.connect(sigc::mem_fun(*this, &Derp::Application::download_finished));
-  Glib::signal_timeout().connect_seconds(sigc::bind_return(sigc::mem_fun(m_lurker, &Derp::Lurker::run_async), true), 1);
+  Glib::signal_timeout().connect_seconds(sigc::bind_return(sigc::mem_fun(m_lurker, &Derp::Lurker::run), true), 60);
 }
 
 void Derp::Application::run() {
@@ -51,15 +51,14 @@ void Derp::Application::run() {
 
 void Derp::Application::signal_go() {
   if (m_goButton->get_active()) {
+    m_goButton->set_active(false);
+
     // Start downloads and lurk.
     m_goButton->set_sensitive(false);
-    
+    m_urlEntry->set_sensitive(false);
     is_hashing = is_parsing = true;
     m_parser.parse_async(m_urlEntry->get_text());
     m_hasher.hash_async(m_fileChooserButton->get_file());
-    m_goButton->set_active(false);
-  } else {
-
   }
 }
 
@@ -81,29 +80,36 @@ void Derp::Application::try_download() {
     int count = m_parser.request_downloads(m_downloader, &m_hasher, m_fileChooserButton->get_file()->get_path(), xDim, yDim);
     if (count > 0) {
       num_downloading = count;
+      m_image->set(m_killmegif);
       update_progressBar();
     } else {
-      m_goButton->set_sensitive(true);
+      downloads_finished();
     }
   }
 }
 
 void Derp::Application::download_finished() {
   num_downloaded++;
+  if (num_downloaded == num_downloading) {
+    downloads_finished();
+  }
   update_progressBar();
 }
 
-void Derp::Application::update_progressBar() {
-  if (num_downloading != num_downloaded) {
-    if (!isGif) {
-      isGif = true;
-      m_image->set(m_killmegif);
-    }
-  } else {
+void Derp::Application::downloads_finished() {
     m_image->set(m_fangpng);
-    isGif = false;
+    if (m_lurkAdjustment->get_value() > 0.0) {
+      m_lurker.add_async({ m_urlEntry->get_text(),
+	    m_fileChooserButton->get_file(),
+	    static_cast<int>(m_lurkAdjustment->get_value()),
+	    static_cast<int>(m_xAdjustment->get_value()),
+	    static_cast<int>(m_yAdjustment->get_value()) });
+    }
     m_goButton->set_sensitive(true);
-  }
+    m_urlEntry->set_sensitive(true);
+}
+
+void Derp::Application::update_progressBar() {
   m_progressBar->set_fraction(static_cast<double>(num_downloaded) / static_cast<double>(num_downloading));
   m_progressBar->set_show_text(true);
   std::stringstream st;
