@@ -11,6 +11,7 @@
 #include "parser.hxx"
 #include "hasher.hxx"
 #include "downloader.hxx"
+#include "lurker.hxx"
 
 namespace Derp {
   class Application {
@@ -48,6 +49,7 @@ namespace Derp {
     Derp::Parser m_parser;
     Derp::Hasher m_hasher;
     Derp::Downloader m_downloader;
+    Derp::Lurker m_lurker;
   };
 }
 #endif

@@ -42,6 +42,7 @@ Derp::Application::Application(int argc, char*argv[]) :
   m_parser.signal_parsing_finished.connect(sigc::mem_fun(*this, &Derp::Application::parsing_finished));
   m_hasher.signal_hashing_finished.connect(sigc::mem_fun(*this, &Derp::Application::hashing_finished));
   m_downloader.signal_download_finished.connect(sigc::mem_fun(*this, &Derp::Application::download_finished));
+  Glib::signal_timeout().connect_seconds(sigc::bind_return(sigc::mem_fun(m_lurker, &Derp::Lurker::run_async), true), 1);
 }
 
 void Derp::Application::run() {
