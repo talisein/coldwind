@@ -1,0 +1,5 @@
+#include <string>
+
+const std::string COLDWIND_GLADE_LOCATION = "@Coldwind_glade_location@/@Coldwind_glade@";
+const std::string COLDWIND_FANGPNG_LOCATION = "@Coldwind_fangpng_location@/@Coldwind_fangpng@";
+const std::string COLDWIND_KILLMEGIF_LOCATION = "@Coldwind_killmegif_location@/@Coldwind_killmegif@";

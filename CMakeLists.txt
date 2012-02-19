@@ -1,12 +1,27 @@
 cmake_minimum_required (VERSION 2.6)
-project (Derp CXX C)
+project (Coldwind CXX)
 
 # The version number
-set (Derp_VERSION_MAJOR 0)
-set (Derp_VERSION_MINOR 1)
+set (Coldwind_VERSION_MAJOR 0)
+set (Coldwind_VERSION_MINOR 1)
 
 # check libs and packages (headers + lib)
-set(Derp_glade_location "\"${CMAKE_INSTALL_PREFIX}/share/CAPViewer/CAPViewer.glade\"")
+set(Coldwind_glade overEngineering.glade)
+set(Coldwind_fangpng fang.png)
+set(Coldwind_killmegif KillMe.gif)
+set(Coldwind_glade_location "${CMAKE_INSTALL_PREFIX}/share/coldwind")
+set(Coldwind_fangpng_location "${CMAKE_INSTALL_PREFIX}/share/coldwind")
+set(Coldwind_killmegif_location "${CMAKE_INSTALL_PREFIX}/share/coldwind")
+
+INSTALL(FILES ${Coldwind_glade} DESTINATION ${Coldwind_glade_location})
+INSTALL(FILES ${Coldwind_fangpng} DESTINATION ${Coldwind_fangpng_location})
+INSTALL(FILES ${Coldwind_killmegif} DESTINATION ${Coldwind_killmegif_location})
+INSTALL(PROGRAMS coldwind DESTINATION bin)
+
+configure_file (
+  "config.h.in"
+  "config.h"
+  )
 
 # std C libraries
 #find_package(stdlibs REQUIRED)
@@ -37,7 +52,7 @@ link_directories(
 include_directories(
   ${GTKMM3_INCLUDE_DIRS} ${GTHREAD_LIBRARY_DIRS} ${XML++_INCLUDE_DIRS} ${CURL_INCLUDE_DIRS})
 
-add_executable(derp main.cxx parser.cxx application.cxx hasher.cxx downloader.cxx image.cxx)
+add_executable(coldwind main.cxx parser.cxx application.cxx hasher.cxx downloader.cxx image.cxx)
 
-target_link_libraries(derp ${GTKMM3_LIBRARIES} ${GTHREAD_LIBRARIES} ${XML++_LIBRARIES} ${CURL_LIBRARIES})
+target_link_libraries(coldwind ${GTKMM3_LIBRARIES} ${GTHREAD_LIBRARIES} ${XML++_LIBRARIES} ${CURL_LIBRARIES})
 
