@@ -44,10 +44,11 @@ void Derp::Hasher::hash_file(const Glib::RefPtr<Gio::File>& file) {
 	insert_filepath(file->get_path());
 	g_free(contents);
       } else {
-	std::cout << "Error: Couldn't load local file contents for hashing :( We might end up downloading something we don't need." << std::endl;
+	std::cerr << "Error: Couldn't load local file contents for hashing :( We might end up downloading something we don't need." << std::endl;
+	std::cerr << "\tThe file was " << file->get_uri() << std::endl;
       }
     } catch (Gio::Error e) {
-      std::cerr << "Error: " << e.what() << " -=- Code: " << e.code() << " -=-" << std::endl;
+      std::cerr << "Error: While trying to load and hash " << file->get_uri() << ": " << e.what() << " -=- Code: " << e.code() << " -=-" << std::endl;
     }
 }
 
