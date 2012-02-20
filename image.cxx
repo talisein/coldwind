@@ -18,7 +18,7 @@ Derp::Image::Image(const std::string& filepath, const Glib::ustring& md5hex) :
 }
 
 bool Derp::Image::is_bigger(int xDim, int yDim) {
-  return m_x > xDim && m_y > yDim;
+  return m_x >= xDim && m_y >= yDim;
 }
 
 bool Derp::operator==(const Image& lhs, const Image& rhs) {
