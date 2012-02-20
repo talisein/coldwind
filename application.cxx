@@ -52,13 +52,16 @@ void Derp::Application::run() {
 void Derp::Application::signal_go() {
   if (m_goButton->get_active()) {
     m_goButton->set_active(false);
-
+    
     // Start downloads and lurk.
-    m_manager.download_async({ m_urlEntry->get_text(),
+    bool is_accepted = m_manager.download_async({ m_urlEntry->get_text(),
 	  m_fileChooserButton->get_file(),
 	  static_cast<int>(m_lurkAdjustment->get_value()),
 	  static_cast<int>(m_xAdjustment->get_value()),
 	  static_cast<int>(m_yAdjustment->get_value()) });
+    if (is_accepted) {
+      m_goButton->set_sensitive(false);
+    }
   }
 }
 
@@ -80,6 +83,7 @@ void Derp::Application::download_finished() {
 
 void Derp::Application::downloads_finished(int, const Request& request) {
     m_image->set(m_fangpng);
+    m_goButton->set_sensitive(true);
     if (request.minutes > 0.0) {
       m_lurker.add_async(request);
     }
