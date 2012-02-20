@@ -1,0 +1,20 @@
+  * Save by original filename [Easy]
+
+  * Lurker should use a std::set rather than std::list [Easy+]
+
+  * Record download statistics from curl (Time, Bytes), populate back
+    to UI [Medium]
+
+  * Decode curl's error messages and put on std:cerr [Easy]
+
+  * Redirect std::cout and std::cerr to an optional popup message log
+    [Hard]
+
+  * The parser should recognize 404s, and the Lurker should drop it
+    [Medium]
+
+  * Capture libxml errors and do the right thing. [Easy/Medium?]
+
+  * Overlay some lurker info text on the image [Medium]
+  ** Or some sort of visual lurker feedback. I dunno. [Hard]
+
