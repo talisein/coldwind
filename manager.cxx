@@ -51,6 +51,6 @@ void Derp::Manager::download_finished() {
 }
 
 void Derp::Manager::done() {
-  signal_all_downloads_finished(num_downloaded, m_data);
   is_working = false;
+  signal_all_downloads_finished(num_downloaded, m_data);
 }
