@@ -1,0 +1,18 @@
+A 4chan thread downloader for the neckbeard weeaboo master race.
+
+Features: 
+
+  * Downloads a given thread to the target directory.
+
+  * If the directory already contains some of those images, they are
+  not re-downloaded.
+
+  * Specify a minimum dimension size for the pictures
+
+  * Specify how long you'd like the app to lurk the thread and keep
+    downloading new pictures. When you do this, the directory you
+    choose for the original download destination is remembered.
+
+  * Little to no error checking. If you delete the target directory
+    while lurking or your disc fills up or you run out of quota, I
+    don't know what will happen. Good luck.
