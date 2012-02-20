@@ -52,7 +52,7 @@ link_directories(
 include_directories(
   ${GTKMM3_INCLUDE_DIRS} ${GTHREAD_LIBRARY_DIRS} ${XML++_INCLUDE_DIRS} ${CURL_INCLUDE_DIRS})
 
-add_executable(coldwind main.cxx parser.cxx application.cxx hasher.cxx downloader.cxx image.cxx lurker.cxx)
+add_executable(coldwind main.cxx parser.cxx application.cxx hasher.cxx downloader.cxx image.cxx lurker.cxx manager.cxx)
 
 target_link_libraries(coldwind ${GTKMM3_LIBRARIES} ${GTHREAD_LIBRARIES} ${XML++_LIBRARIES} ${CURL_LIBRARIES})
 

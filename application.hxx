@@ -21,14 +21,11 @@ namespace Derp {
 
   private:
     void signal_go();
-    void download_started();
     void download_finished();
+    void downloads_finished(int num, const Lurk_Data& request);
+    void starting_downloads(int num);
+
     void update_progressBar();
-    void parsing_finished();
-    void hashing_finished();
-    bool is_hashing, is_parsing;
-    void try_download();
-    void downloads_finished();
 
     int num_downloading;
     int num_downloaded;
@@ -37,7 +34,6 @@ namespace Derp {
     Gtk::Image* m_image;
     Glib::RefPtr<Gdk::PixbufAnimation> m_killmegif;
     Glib::RefPtr<Gdk::Pixbuf> m_fangpng;
-    bool isGif;
     Gtk::ProgressBar* m_progressBar;
     Gtk::ToggleButton* m_goButton;
     Glib::RefPtr<Gtk::Adjustment> m_lurkAdjustment;
@@ -47,9 +43,7 @@ namespace Derp {
     Gtk::Entry* m_urlEntry;
     Gtk::FileChooserButton* m_fileChooserButton;
 
-    Derp::Parser m_parser;
-    Derp::Hasher m_hasher;
-    Derp::Downloader m_downloader;
+    Derp::Manager m_manager;
     Derp::Lurker m_lurker;
   };
 }

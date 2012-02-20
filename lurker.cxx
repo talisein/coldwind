@@ -2,11 +2,13 @@
 #include <iostream>
 #include <glibmm/thread.h>
 
-Derp::Lurker::Lurker() : is_hashing(false), is_parsing(false), num_downloaded(0)
+Derp::Lurker::Lurker()
 {
-  m_parser.signal_parsing_finished.connect(sigc::mem_fun(*this, &Derp::Lurker::parsing_finished));
-  m_hasher.signal_hashing_finished.connect(sigc::mem_fun(*this, &Derp::Lurker::hashing_finished));
-  m_downloader.signal_download_finished.connect(sigc::mem_fun(*this, &Derp::Lurker::download_finished));
+  m_manager_connection = m_manager.signal_all_downloads_finished.connect( sigc::mem_fun(*this, &Derp::Lurker::iteration_finish) );
+}
+
+Derp::Lurker::~Lurker() {
+  m_manager_connection.disconnect();
 }
 
 /*
@@ -29,7 +31,6 @@ void Derp::Lurker::run() {
     std::cerr << "Lurker got called to run(), but is still working on a previous run. Skipping." << std::endl;
     return;
   }
-  std::cout << "The lurker is running on the main thread." << std::endl;  
 
   total_downloaded = 0;
   iter = m_list.begin();
@@ -41,18 +42,22 @@ void Derp::Lurker::run() {
 }
 
 void Derp::Lurker::iteration_next() {
-  is_hashing = is_parsing = true;
-  m_parser.parse_async(iter->thread_url);
-  m_hasher.hash_async(iter->target_directory);
+  if (!m_manager.download_async(*iter)) {
+    std::cerr << "Error: Lurker tried to start a download of thread, but the manager is busy." << std::endl;
+    iteration_finish(0, *iter);
+  } 
 }
 
-void Derp::Lurker::iteration_finish() {
+void Derp::Lurker::iteration_finish(int num_downloaded, const Derp::Lurk_Data&) {
   iter->minutes -= 1;
   total_downloaded += num_downloaded;
+
   iter++;
   if (iter == m_list.end()) {
+
     std::cout << "Lurker downloaded " << total_downloaded << " images total\n";
     std::cout << "There were " << m_list.size() << " threads being monitored, now only ";
+
     m_list.remove_if([](Lurk_Data data) { return data.minutes <= 0; });
     std::cout << m_list.size() << " remain." << std::endl;
 
@@ -61,31 +66,3 @@ void Derp::Lurker::iteration_finish() {
     iteration_next();
   }
 }
-
-void Derp::Lurker::parsing_finished() {
-  is_parsing = false;
-  try_download();
-}
-
-void Derp::Lurker::hashing_finished() {
-  is_hashing = false;
-  try_download();
-}
-
-void Derp::Lurker::try_download() {
-  if ( !(is_parsing || is_hashing) ) {
-    num_downloaded = 0;
-    num_downloading = m_parser.request_downloads(m_downloader, &m_hasher, iter->target_directory->get_path(), iter->xDim, iter->yDim);
-    if ( num_downloading == 0 ) {
-      iteration_finish();
-    } 
-  }
-}
-
-void Derp::Lurker::download_finished() {
-  num_downloaded++;
-  if (num_downloading == num_downloaded) {
-    iteration_finish();
-  }
-}
-
