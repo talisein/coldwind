@@ -22,7 +22,7 @@ namespace Derp {
   private:
     void signal_go();
     void download_finished();
-    void downloads_finished(int num, const Lurk_Data& request);
+    void downloads_finished(int num, const Request& request);
     void starting_downloads(int num);
 
     void update_progressBar();

@@ -9,21 +9,21 @@ namespace Derp {
     Lurker();
     ~Lurker();
 
-    void add_async(const Derp::Lurk_Data& data);
+    void add_async(const Derp::Request& data);
     void run();
 
   private:
     Lurker(const Lurker&); // evil func
     const Lurker& operator=(const Lurker&); // evil func
 
-    void add(const Derp::Lurk_Data&);
+    void add(const Derp::Request&);
     Glib::Mutex m_list_lock;
-    std::list<Derp::Lurk_Data> m_list;
-    std::list<Derp::Lurk_Data>::iterator iter;
+    std::list<Derp::Request> m_list;
+    std::list<Derp::Request>::iterator iter;
 
     int total_downloaded;
     void iteration_next();
-    void iteration_finish(int num_downloaded, const Derp::Lurk_Data& request);
+    void iteration_finish(int num_downloaded, const Derp::Request& request);
 
     sigc::connection m_manager_connection;
     Derp::Manager m_manager;

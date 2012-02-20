@@ -7,7 +7,7 @@ Derp::Manager::Manager() : is_working(false)
   m_downloader.signal_download_finished.connect(sigc::mem_fun(*this, &Derp::Manager::download_finished));
 }
 
-bool Derp::Manager::download_async(const Derp::Lurk_Data& data) {
+bool Derp::Manager::download_async(const Derp::Request& data) {
   if (!is_working) {
     is_working = true;
     m_data = data;

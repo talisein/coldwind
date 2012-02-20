@@ -17,11 +17,11 @@ Derp::Lurker::~Lurker() {
   freeze waiting for run() to finish. So we have to make an async
   method.
  */
-void Derp::Lurker::add_async(const Derp::Lurk_Data& data) {
+void Derp::Lurker::add_async(const Derp::Request& data) {
   Glib::Thread::create( sigc::bind(sigc::mem_fun(*this, &Derp::Lurker::add), data), false);
 }
 
-void Derp::Lurker::add(const Derp::Lurk_Data& data) {
+void Derp::Lurker::add(const Derp::Request& data) {
   Glib::Mutex::Lock lock(m_list_lock);
   m_list.push_back(data);
 }
@@ -48,7 +48,7 @@ void Derp::Lurker::iteration_next() {
   } 
 }
 
-void Derp::Lurker::iteration_finish(int num_downloaded, const Derp::Lurk_Data&) {
+void Derp::Lurker::iteration_finish(int num_downloaded, const Derp::Request&) {
   iter->minutes -= 1;
   total_downloaded += num_downloaded;
 
@@ -58,7 +58,7 @@ void Derp::Lurker::iteration_finish(int num_downloaded, const Derp::Lurk_Data&) 
     std::cout << "Lurker downloaded " << total_downloaded << " images total\n";
     std::cout << "There were " << m_list.size() << " threads being monitored, now only ";
 
-    m_list.remove_if([](Lurk_Data data) { return data.minutes <= 0; });
+    m_list.remove_if([](Request data) { return data.minutes <= 0; });
     std::cout << m_list.size() << " remain." << std::endl;
 
     m_list_lock.unlock();

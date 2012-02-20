@@ -78,7 +78,7 @@ void Derp::Application::download_finished() {
   update_progressBar();
 }
 
-void Derp::Application::downloads_finished(int, const Lurk_Data& request) {
+void Derp::Application::downloads_finished(int, const Request& request) {
     m_image->set(m_fangpng);
     if (request.minutes > 0.0) {
       m_lurker.add_async(request);

@@ -7,7 +7,7 @@
 #include "downloader.hxx"
 
 namespace Derp {
-  struct Lurk_Data {
+  struct Request {
     Glib::ustring thread_url;
     Glib::RefPtr<Gio::File> target_directory;
     int minutes;
@@ -19,8 +19,8 @@ namespace Derp {
   public:
     Manager();
 
-    bool download_async(const Derp::Lurk_Data& data);
-    sigc::signal<void, int, const Derp::Lurk_Data&> signal_all_downloads_finished;
+    bool download_async(const Derp::Request& data);
+    sigc::signal<void, int, const Derp::Request&> signal_all_downloads_finished;
     sigc::signal<void> signal_download_finished;
     sigc::signal<void, int> signal_starting_downloads;
 
@@ -40,7 +40,7 @@ namespace Derp {
     Derp::Hasher m_hasher;
     Derp::Downloader m_downloader;
 
-    Derp::Lurk_Data m_data;
+    Derp::Request m_data;
 
   };
 }
