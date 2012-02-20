@@ -186,7 +186,7 @@
                 <property name="halign">end</property>
                 <property name="hexpand">True</property>
                 <property name="xalign">1</property>
-                <property name="label" translatable="yes">Dimensions: </property>
+                <property name="label" translatable="yes">Min. Dimensions: </property>
                 <property name="justify">right</property>
                 <property name="single_line_mode">True</property>
               </object>
