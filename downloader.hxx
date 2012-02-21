@@ -35,6 +35,7 @@ namespace Derp {
 
     void download_imgs(const std::list<Derp::Image>& imgs, const Glib::RefPtr<Gio::File>& p_dir);
     void download_url(const Glib::ustring& url, const Glib::RefPtr<Gio::File>&);
+    CURL* curl_setup(CURL* curl, const Derp::Image& img, const Glib::RefPtr<Gio::File>& p_dir);
 
     Glib::ThreadPool m_threadPool;
 
@@ -42,6 +43,8 @@ namespace Derp {
     sigc::connection m_timeout_connection;
     int m_running_handles;
     std::map<CURL*, Glib::RefPtr<Gio::FileOutputStream>> m_fos_map;
+    std::list<Derp::Image> m_imgs;
+    Glib::RefPtr<Gio::File> m_target_dir;
 
     bool curl_timeout_expired_cb();
     void curl_check_info();

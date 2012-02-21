@@ -35,6 +35,7 @@ Derp::Downloader::Downloader() : m_threadPool(4),
   }
 
   //  code = curl_multi_setopt(m_curlm, CURLMOPT_PIPELINING, 0L);
+  code = curl_multi_setopt(m_curlm, CURLMOPT_MAXCONNECTS, 5L);
   //code = curl_multi_setopt(m_curlm, CURLMOPT_MAXCONNECTS, 10L);
 }
 
@@ -72,7 +73,7 @@ void Derp::Downloader::curl_check_info() {
   CURLcode code;
   CURLMcode mcode;
   CURLMsg* msg;
-  
+  std::list<Derp::Image>::iterator iter;
   do {
     msg = curl_multi_info_read(m_curlm, &msgs_left);
     if (msg) {
@@ -100,10 +101,19 @@ void Derp::Downloader::curl_check_info() {
 	if (mcode != CURLM_OK) {
 	  std::cerr << "Error: While removing curl handle from multi: " << curl_multi_strerror(mcode) << std::endl;
 	}
-	
-	
-	curl_easy_cleanup(curl);
 	signal_download_finished();
+
+	iter = m_imgs.begin();
+	if (iter != m_imgs.end()) {
+	  curl_easy_reset(curl);
+	  curl = curl_setup(curl, *iter, m_target_dir);
+	  if (curl) {
+	    curl_multi_add_handle(m_curlm, curl);
+	  }
+	  m_imgs.erase(iter);
+	} else {
+	  curl_easy_cleanup(curl);
+	}
 	break;
       default:
 	std::cerr << "Warning: Unexpected message received from curl info read." << std::endl;
@@ -204,52 +214,68 @@ size_t Derp::write_cb(void *ptr, size_t size, size_t nmemb, void *userdata)
   return p_fos->write(ptr, size*nmemb);
 }
 
-void Derp::Downloader::download_imgs_multi(const std::list<Derp::Image>& imgs, const Glib::RefPtr<Gio::File>& p_dir) {
+CURL* Derp::Downloader::curl_setup(CURL* curl, const Derp::Image& img, const Glib::RefPtr<Gio::File>& p_dir) {
+  Glib::ustring url(img.getUrl());
+  Glib::ustring filename(url);
+  filename.erase(0, url.find_last_of("/") + 1);
+  Glib::RefPtr<Gio::FileOutputStream> p_fos;
+  try {
+    Glib::RefPtr<Gio::File> p_file = Gio::File::create_for_path(Glib::build_filename(p_dir->get_path(), filename));
+    p_fos = p_file->create_file();
+  } catch (Gio::Error e) {
+    std::cerr << "Failure creating file " << Glib::build_filename(p_dir->get_path(), filename) << std::endl;
+    std::cerr << "\tThere's probably a file named that already. Skipping." << std::endl;
+    signal_download_finished(); // Call so we don't hang the progress bar? 
+    return NULL;
+  }
+  m_fos_map.insert({curl, p_fos});
   
-  for ( auto it = imgs.begin(); it != imgs.end(); it++) {
+  
+  CURLcode code = curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+  if (code != CURLE_OK) {
+    std::cerr << "Error: While setting curl url to " << url << ": " << curl_easy_strerror(code) << std::endl; 
+    curl_easy_cleanup(curl);
+    return NULL;
+  }
+  
+  // code = curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 4L);
+  //    CURLcode code = curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+  //    CURLcode code = curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+  //CURLcode code = curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+  
+  code = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &Derp::write_cb);
+  if (code != CURLE_OK) {
+    std::cerr << "Error: While setting curl write function: " << curl_easy_strerror(code) << std::endl; 
+    curl_easy_cleanup(curl);
+    return NULL;
+  }
+  
+  code = curl_easy_setopt(curl, CURLOPT_WRITEDATA, p_fos->gobj());
+  if (code != CURLE_OK) {
+    std::cerr << "Error: While setting curl write data: " << curl_easy_strerror(code) << std::endl; 
+    curl_easy_cleanup(curl);
+    return NULL;
+  }
+
+  return curl;
+}
+
+void Derp::Downloader::download_imgs_multi(const std::list<Derp::Image>& imgs, const Glib::RefPtr<Gio::File>& p_dir) {
+  m_imgs = imgs;
+  m_target_dir = p_dir;
+  for ( int i = 0; i < 5; i++ ) {
+    auto it = m_imgs.begin();
     CURL* curl = curl_easy_init();
-    Glib::ustring url(it->getUrl());
-    Glib::ustring filename(url);
-    filename.erase(0, url.find_last_of("/") + 1);
-    Glib::RefPtr<Gio::FileOutputStream> p_fos;
-    try {
-      Glib::RefPtr<Gio::File> p_file = Gio::File::create_for_path(Glib::build_filename(p_dir->get_path(), filename));
-      p_fos = p_file->create_file();
-    } catch (Gio::Error e) {
-      std::cerr << "Failure creating file " << Glib::build_filename(p_dir->get_path(), filename) << std::endl;
-      std::cerr << "\tThere's probably a file named that already. Skipping." << std::endl;
-      signal_download_finished(); // Call so we don't hang the progress bar? 
-      continue;
-    }
-    m_fos_map.insert({curl, p_fos});
-    
-    CURLcode code = curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    if (code != CURLE_OK) {
-      std::cerr << "Error: While setting curl url to " << url << ": " << curl_easy_strerror(code) << std::endl; 
-      curl_easy_cleanup(curl);
-      continue;
+    curl = curl_setup(curl, *it, p_dir);
+    if (curl) {
+      CURLMcode m_code = curl_multi_add_handle(m_curlm, curl); 
+      if (m_code != CURLM_OK) {
+	std::cerr << "Error: While adding curl handle to " << it->getUrl() << ": " << curl_multi_strerror(m_code) << std::endl; 
+	curl_easy_cleanup(curl);
+      }
     }
     
-    code = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &Derp::write_cb);
-    if (code != CURLE_OK) {
-      std::cerr << "Error: While setting curl write function: " << curl_easy_strerror(code) << std::endl; 
-      curl_easy_cleanup(curl);
-      continue;
-    }
-
-    code = curl_easy_setopt(curl, CURLOPT_WRITEDATA, p_fos->gobj());
-    if (code != CURLE_OK) {
-      std::cerr << "Error: While setting curl write data: " << curl_easy_strerror(code) << std::endl; 
-      curl_easy_cleanup(curl);
-      continue;
-    }
-
-    CURLMcode m_code = curl_multi_add_handle(m_curlm, curl); 
-    if (m_code != CURLM_OK) {
-      std::cerr << "Error: While adding curl handle to " << url << ": " << curl_multi_strerror(m_code) << std::endl; 
-      curl_easy_cleanup(curl);
-      continue;
-    }
+    m_imgs.erase(it);
   }
 }
 
