@@ -33,7 +33,7 @@ void Derp::Manager::hashing_finished() {
 void Derp::Manager::try_download() {
   if ( !(is_parsing || is_hashing) ) {
     num_downloaded = 0;
-    num_downloading = m_parser.request_downloads(m_downloader, &m_hasher, m_data.target_directory->get_path(), m_data.xDim, m_data.yDim);
+    num_downloading = m_parser.request_downloads(m_downloader, &m_hasher, m_data.target_directory, m_data.xDim, m_data.yDim);
     if ( num_downloading == 0 ) {
       done();
     } else {

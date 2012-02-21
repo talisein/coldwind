@@ -1,6 +1,7 @@
 #include "application.hxx"
 #include <gtkmm.h>
 #include <iostream>
+#include <iomanip>
 #include <gdkmm/pixbufanimation.h>
 #include <queue>
 #include "config.h"
@@ -54,6 +55,8 @@ void Derp::Application::signal_go() {
     m_goButton->set_active(false);
     
     // Start downloads and lurk.
+    m_timer.reset();
+    m_timer.start();
     bool is_accepted = m_manager.download_async({ m_urlEntry->get_text(),
 	  m_fileChooserButton->get_file(),
 	  static_cast<int>(m_lurkAdjustment->get_value()),
@@ -82,11 +85,13 @@ void Derp::Application::download_finished() {
 }
 
 void Derp::Application::downloads_finished(int, const Request& request) {
-    m_image->set(m_fangpng);
-    m_goButton->set_sensitive(true);
-    if (request.minutes > 0.0) {
-      m_lurker.add_async(request);
-    }
+  m_timer.stop();
+  std::cout << "Downloaded images in " << std::setprecision(5) << m_timer.elapsed() << " seconds." << std::endl;
+  m_image->set(m_fangpng);
+  m_goButton->set_sensitive(true);
+  if (request.minutes > 0.0) {
+    m_lurker.add_async(request);
+  }
 }
 
 void Derp::Application::update_progressBar() {

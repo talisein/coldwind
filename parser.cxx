@@ -103,7 +103,7 @@ void Derp::Parser::parse_thread(const Glib::ustring& url) {
   signal_parsing_finished();
 }
 
-int Derp::Parser::request_downloads(Derp::Downloader& downloader, Derp::Hasher* const hasher_ptr, const std::string& path, int xDim, int yDim) {
+int Derp::Parser::request_downloads(Derp::Downloader& downloader, Derp::Hasher* const hasher_ptr, const Glib::RefPtr<Gio::File> p_dir, int xDim, int yDim) {
   std::list<Derp::Image> imgs;
     
   m_images.remove_if([hasher_ptr](Derp::Image img) { return hasher_ptr->is_downloaded(img); });
@@ -111,7 +111,7 @@ int Derp::Parser::request_downloads(Derp::Downloader& downloader, Derp::Hasher* 
   m_images.remove_if([xDim, yDim](Derp::Image img) { return !img.is_bigger(xDim, yDim); });
 
   int count = m_images.size();
-  downloader.download_async(m_images, path);
+  downloader.download_async(m_images, p_dir);
   return count;
 }
 

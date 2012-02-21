@@ -18,7 +18,7 @@ namespace Derp {
     ~Parser();
 
     void parse_async(const Glib::ustring& url);
-    int request_downloads(Derp::Downloader& downloader, Derp::Hasher* const hasher, const std::string& path, int xDim = -1, int yDim = -1);
+    int request_downloads(Derp::Downloader& downloader, Derp::Hasher* const hasher, const Glib::RefPtr<Gio::File>, int xDim = -1, int yDim = -1);
     Glib::Dispatcher signal_parsing_finished;
 
 

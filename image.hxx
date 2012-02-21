@@ -10,7 +10,7 @@ namespace Derp {
 
     bool is_bigger(int xDim, int yDim);
 
-    Glib::ustring getUrl() { return m_uri; };
+    Glib::ustring getUrl() const { return m_uri; };
   private:
     // URL or file path
     Glib::ustring m_uri;

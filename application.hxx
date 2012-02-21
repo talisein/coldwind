@@ -8,6 +8,7 @@
 #include <gtkmm/image.h>
 #include <gdkmm/pixbufanimation.h>
 #include <gtkmm.h>
+#include <glibmm/timer.h>
 #include "parser.hxx"
 #include "hasher.hxx"
 #include "downloader.hxx"
@@ -43,6 +44,7 @@ namespace Derp {
     Gtk::Entry* m_urlEntry;
     Gtk::FileChooserButton* m_fileChooserButton;
 
+    Glib::Timer m_timer;
     Derp::Manager m_manager;
     Derp::Lurker m_lurker;
   };
