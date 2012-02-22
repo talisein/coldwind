@@ -10,6 +10,7 @@
 #include "image.hxx"
 #include <glibmm/iochannel.h>
 #include <giomm/file.h>
+#include <glibmm/timer.h>
 
 namespace Derp {
   struct Socket_Info {
@@ -37,6 +38,7 @@ namespace Derp {
     void download_imgs(const std::list<Derp::Image>& imgs, const Glib::RefPtr<Gio::File>& p_dir);
     void download_url(const Glib::ustring& url, const Glib::RefPtr<Gio::File>&);
     bool curl_setup(CURL* curl, const Derp::Image& img);
+    void collect_statistics(CURL* curl);
 
     Glib::ThreadPool m_threadPool;
 
@@ -46,6 +48,8 @@ namespace Derp {
     std::map<CURL*, Glib::RefPtr<Gio::FileOutputStream>> m_fos_map;
     std::list<Derp::Image> m_imgs;
     Glib::RefPtr<Gio::File> m_target_dir;
+    double m_total_bytes;
+    Glib::Timer m_timer;
 
     bool curl_timeout_expired_cb();
     void curl_check_info();

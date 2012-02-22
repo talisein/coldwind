@@ -1,6 +1,7 @@
 #include "downloader.hxx"
 #include <iostream>
 #include <glibmm/thread.h>
+#include <iomanip>
 
 Derp::Downloader::Downloader() : m_threadPool(4), 
 				 m_curlm(curl_multi_init())
@@ -67,6 +68,28 @@ int Derp::curl_socket_cb(CURL *easy, /* easy handle */
   return 0;
 }
 
+void Derp::Downloader::collect_statistics(CURL* curl) {
+  CURLcode code;
+  double total, starttransfer, size, speed;
+  long connects, redirects;
+
+  code = curl_easy_getinfo(curl, CURLINFO_NUM_CONNECTS, &connects);
+  code = curl_easy_getinfo(curl, CURLINFO_REDIRECT_COUNT, &redirects);
+  code = curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &total);
+  code = curl_easy_getinfo(curl, CURLINFO_SIZE_DOWNLOAD, &size);
+  m_total_bytes += size;
+  code = curl_easy_getinfo(curl, CURLINFO_SPEED_DOWNLOAD, &speed);
+  code = curl_easy_getinfo(curl, CURLINFO_STARTTRANSFER_TIME, &starttransfer);
+  std::cout << std::setw(6) << std::setprecision(5) << size / 1000.0 << " kB in " << std::setw(6) << std::setprecision(3) << total << " s. [" << std::setw(6) << std::setprecision(5) << speed/1000.0 << " kB/s] {Establishing: " << std::setw(6) << std::setprecision(3) << starttransfer << " s} -" << connects << " new conns, " << redirects << " redirects-" << " (Total: ";
+  
+  if (m_total_bytes > 1000000) 
+    std::cout << std::setw(6) << std::setprecision(4) << m_total_bytes / 1000000.0 << " MB, Total Average Speed: " ;
+  else 
+    std::cout << std::setw(6) << std::setprecision(4) << m_total_bytes / 1000.0 << " kB, Total Average Speed: " ;
+  std::cout << std::setw(8) << std::setprecision(7) << (m_total_bytes / 1000.0) / m_timer.elapsed() << " kB/s)" << std::endl;
+
+}
+
 void Derp::Downloader::curl_check_info() {
   int msgs_left;
   CURL* curl;
@@ -88,16 +111,18 @@ void Derp::Downloader::curl_check_info() {
 	}
 
 	if (m_fos_map.count(curl) != 1) {
-	  std::cerr << "Got a curl reference that is not in our private map." << std::endl;
+	  std::cerr << "Error: Got a curl reference that is not in our private map." << std::endl;
 	} else {
 	  auto iter = m_fos_map.find(curl);
 	  try {
 	    iter->second->close();
-	  } catch (Gio::Error) {
-	    std::cerr << "Error closing a file" << std::endl;
+	  } catch (Gio::Error e) {
+	    std::cerr << "Error: While closing a file: " << e.what() << std::endl;
 	  } 
 	  m_fos_map.erase(iter);
 	}
+
+	collect_statistics(curl);
 
 	mcode = curl_multi_remove_handle(m_curlm, curl);
 	if (mcode != CURLM_OK) {
@@ -224,8 +249,9 @@ bool Derp::Downloader::curl_setup(CURL* curl, const Derp::Image& img) {
   } catch (Gio::Error e) {
     switch (e.code()) {
     case Gio::Error::Code::EXISTS:
-      std::cerr << "File " << filepath << " already exists. Skipping." << std::endl;
-      std::cerr << "This means the file already existing does not match the MD5 hash of what's on 4chan. If Coldwind is the only program saving to this directory, then it's downloads are corrupted somehow. Complain on /g/ or something." << std::endl;
+      std::cerr << "Warning: File " << filepath << " already exists. Skipping." << std::endl;
+      //std::cerr << "This means the file already existing does not match the MD5 hash of what's on 4chan. If Coldwind is the only program saving to this directory, then it's downloads are corrupted somehow. Complain on /g/ or something." << std::endl;
+      std::cerr << "If this is a transient error (i.e. it goes away on its own the next time you hit the download button), there is no real problem. The files aren't being flushed timely, or something..." << std::endl;
       signal_download_error();
       return false;
       break;
@@ -266,6 +292,9 @@ bool Derp::Downloader::curl_setup(CURL* curl, const Derp::Image& img) {
 void Derp::Downloader::download_imgs_multi(const std::list<Derp::Image>& imgs, const Glib::RefPtr<Gio::File>& p_dir) {
   m_imgs = imgs;
   m_target_dir = p_dir;
+  m_timer.reset();
+  m_timer.start();
+  m_total_bytes = 0;
   for ( int i = 0; i < 5; i++ ) {
     auto it = m_imgs.begin();
     if (it == m_imgs.end())
