@@ -24,13 +24,25 @@ void Derp::startElement(void* user_data, const xmlChar* name, const xmlChar** at
     i += 2;
   }
   
-  parser->on_start_element( reinterpret_cast<const char*>(name), attr_map );
+  try {
+    Glib::ustring str( reinterpret_cast<const char*>(name) );
+    parser->on_start_element( str, attr_map );
+  } catch (std::exception e) {
+    std::cerr << "Error startElement casting to string: " << e.what() << std::endl;
+  }
 }
 
 void Derp::onCharacters(void* user_data, const xmlChar* chars, int len) {
   Derp::Parser* parser = static_cast<Derp::Parser*>(user_data);
-
-  parser->on_characters({reinterpret_cast<const char*>(chars),  len});
+  
+  Glib::ustring str;
+  try {
+    str.assign(reinterpret_cast<const char*>(chars));
+  } catch (std::exception e) {
+    std::cerr << "Error onCharacters casting to string: " << e.what() << std::endl;
+    std::cerr << "The characters were: " << chars << std::endl;
+  }
+  parser->on_characters(str);
 }
 
 void Derp::Parser::parse_async(const Glib::ustring& url) {
@@ -38,7 +50,7 @@ void Derp::Parser::parse_async(const Glib::ustring& url) {
   Glib::Thread::create( sigc::bind(sigc::mem_fun(this, &Parser::parse_thread), url), false);
 }
 
-void Derp::Parser::on_characters(const std::string& str) {
+void Derp::Parser::on_characters(const Glib::ustring& str) {
   if ( curSourceUrl.size() > 0) {
     size_t start = str.find(", ");
     if (start != std::string::npos) {

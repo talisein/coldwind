@@ -25,15 +25,18 @@ namespace Derp {
     void download_finished();
     void downloads_finished(int num, const Request& request);
     void starting_downloads(int num);
-
+    void download_error();
     void update_progressBar();
 
     int num_downloading;
     int num_downloaded;
+    int num_download_errors;
+
     Gtk::Main m_kit;
     Gtk::Window* m_window;
     Gtk::Image* m_image;
     Glib::RefPtr<Gdk::PixbufAnimation> m_killmegif;
+    Glib::RefPtr<Gdk::PixbufAnimation> m_errorgif;
     Glib::RefPtr<Gdk::Pixbuf> m_fangpng;
     Gtk::ProgressBar* m_progressBar;
     Gtk::ToggleButton* m_goButton;

@@ -23,6 +23,7 @@ namespace Derp {
     sigc::signal<void, int, const Derp::Request&> signal_all_downloads_finished;
     sigc::signal<void> signal_download_finished;
     sigc::signal<void, int> signal_starting_downloads;
+    sigc::signal<void> signal_download_error;
 
   private:
 
@@ -30,11 +31,12 @@ namespace Derp {
     void hashing_finished();
     void try_download();
     void download_finished();
+    void download_error();
     void done();
-
+    
     bool is_working;
     bool is_hashing, is_parsing;
-    int num_downloading, num_downloaded;
+    int num_downloading, num_downloaded, num_errors;
 
     Derp::Parser m_parser;
     Derp::Hasher m_hasher;

@@ -25,6 +25,8 @@ Derp::Application::Application(int argc, char*argv[]) :
     m_yAdjustment = Glib::RefPtr<Gtk::Adjustment>::cast_static(refBuilder->get_object("yAdjustment"));
     m_killmegif = Gdk::PixbufAnimation::create_from_file(COLDWIND_KILLMEGIF_LOCATION);
     m_fangpng = Gdk::Pixbuf::create_from_file(COLDWIND_FANGPNG_LOCATION);
+    m_errorgif = Gdk::PixbufAnimation::create_from_file(COLDWIND_ERRORGIF_LOCATION);
+
     m_image->set(m_fangpng);
 
   } catch (const Glib::FileError& ex) {
@@ -40,6 +42,7 @@ Derp::Application::Application(int argc, char*argv[]) :
 
   m_goButton->signal_toggled().connect( sigc::mem_fun(*this, &Derp::Application::signal_go));
   m_manager.signal_download_finished.connect(sigc::mem_fun(*this, &Derp::Application::download_finished));
+  m_manager.signal_download_error.connect(sigc::mem_fun(*this, &Derp::Application::download_error));
   m_manager.signal_all_downloads_finished.connect(sigc::mem_fun(*this, &Derp::Application::downloads_finished));
   m_manager.signal_starting_downloads.connect(sigc::mem_fun(*this, &Derp::Application::starting_downloads));
   
@@ -71,12 +74,19 @@ void Derp::Application::signal_go() {
 void Derp::Application::starting_downloads(int num) {
   if (num > 0) {
     num_downloaded = 0;
+    num_download_errors = 0;
     num_downloading = num;
     m_image->set(m_killmegif);
     update_progressBar();
   } else {
     std::cerr << "Unexpected call to starting downloads (0)?" << std::endl;
   }
+}
+
+void Derp::Application::download_error() {
+  num_download_errors++;
+  m_image->set(m_errorgif);
+  update_progressBar();
 }
 
 void Derp::Application::download_finished() {
@@ -87,7 +97,10 @@ void Derp::Application::download_finished() {
 void Derp::Application::downloads_finished(int, const Request& request) {
   m_timer.stop();
   std::cout << "Downloaded images in " << std::setprecision(5) << m_timer.elapsed() << " seconds." << std::endl;
-  m_image->set(m_fangpng);
+  if (num_download_errors == 0) {
+    m_image->set(m_fangpng);
+  }
+
   m_goButton->set_sensitive(true);
   if (request.minutes > 0.0) {
     m_lurker.add_async(request);
@@ -95,9 +108,13 @@ void Derp::Application::downloads_finished(int, const Request& request) {
 }
 
 void Derp::Application::update_progressBar() {
-  m_progressBar->set_fraction(static_cast<double>(num_downloaded) / static_cast<double>(num_downloading));
+  m_progressBar->set_fraction(static_cast<double>(num_downloaded + num_download_errors) / static_cast<double>(num_downloading));
   m_progressBar->set_show_text(true);
   std::stringstream st;
   st << num_downloaded << " of " << num_downloading << " images downloaded";
+  if (num_download_errors > 0) 
+    st << ", " << num_download_errors << " error";
+  if (num_download_errors > 1)
+    st << "s";
   m_progressBar->set_text(st.str());
 }

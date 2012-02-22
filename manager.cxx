@@ -5,6 +5,7 @@ Derp::Manager::Manager() : is_working(false)
   m_parser.signal_parsing_finished.connect(sigc::mem_fun(*this, &Derp::Manager::parsing_finished));
   m_hasher.signal_hashing_finished.connect(sigc::mem_fun(*this, &Derp::Manager::hashing_finished));
   m_downloader.signal_download_finished.connect(sigc::mem_fun(*this, &Derp::Manager::download_finished));
+  m_downloader.signal_download_error.connect(sigc::mem_fun(*this, &Derp::Manager::download_error));
 }
 
 bool Derp::Manager::download_async(const Derp::Request& data) {
@@ -32,6 +33,7 @@ void Derp::Manager::hashing_finished() {
 
 void Derp::Manager::try_download() {
   if ( !(is_parsing || is_hashing) ) {
+    num_errors = 0;
     num_downloaded = 0;
     num_downloading = m_parser.request_downloads(m_downloader, &m_hasher, m_data.target_directory, m_data.xDim, m_data.yDim);
     if ( num_downloading == 0 ) {
@@ -45,7 +47,15 @@ void Derp::Manager::try_download() {
 void Derp::Manager::download_finished() {
   num_downloaded++;
   signal_download_finished();
-  if (num_downloading == num_downloaded) {
+  if (num_downloading == (num_downloaded + num_errors)) {
+    done();
+  }
+}
+
+void Derp::Manager::download_error() {
+  num_errors++;
+  signal_download_error();
+  if (num_downloading == (num_downloaded + num_errors)) {
     done();
   }
 }

@@ -29,13 +29,14 @@ namespace Derp {
     void download_imgs_multi(const std::list<Derp::Image>& imgs, const Glib::RefPtr<Gio::File>& p_dir);
 
     Glib::Dispatcher signal_download_finished;
+    Glib::Dispatcher signal_download_error;
   private:
     Downloader& operator=(const Downloader&); // Evil func
     Downloader(const Downloader&); // Evil func
 
     void download_imgs(const std::list<Derp::Image>& imgs, const Glib::RefPtr<Gio::File>& p_dir);
     void download_url(const Glib::ustring& url, const Glib::RefPtr<Gio::File>&);
-    CURL* curl_setup(CURL* curl, const Derp::Image& img, const Glib::RefPtr<Gio::File>& p_dir);
+    bool curl_setup(CURL* curl, const Derp::Image& img);
 
     Glib::ThreadPool m_threadPool;
 

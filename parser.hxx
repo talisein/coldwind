@@ -33,7 +33,7 @@ namespace Derp {
     htmlSAXHandlerPtr sax;
     void parse_thread(const Glib::ustring& url);
     void on_start_element(Glib::ustring name, std::map<Glib::ustring, Glib::ustring> attr_map);
-    void on_characters(const std::string&);
+    void on_characters(const Glib::ustring&);
 
     friend void startElement(void* user_data, const xmlChar* name, const xmlChar** attrs);
     friend void onCharacters(void* user_data, const xmlChar* chars, int len);
