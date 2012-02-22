@@ -11,8 +11,16 @@ Features:
 
   * Specify how long you'd like the app to lurk the thread and keep
     downloading new pictures. When you do this, the directory you
-    choose for the original download destination is remembered.
+    choose for the original download destination and other options are
+    remembered.
 
-  * Little to no error checking. If you delete the target directory
-    while lurking or your disc fills up or you run out of quota, I
-    don't know what will happen. Good luck.
+  * Thanks to libcurl, its pretty speedy; when downloading a big
+    thread we recycle our connection to the server so in theory we are
+    playing nice. Some statistics are printed to stdout about how fast
+    everything is being downloaded.
+
+  * Some error checking. We won't write a file if there is a file with
+    that name already. If you delete the target directory while
+    lurking, or your disc fills up or you run out of quota, I don't
+    know what will happen but you'll probably get a generic
+    error. Good luck.
