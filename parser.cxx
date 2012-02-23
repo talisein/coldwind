@@ -31,16 +31,16 @@ void Derp::startElement(void* user_data, const xmlChar* name, const xmlChar** at
   }
 }
 
-void Derp::onCharacters(void* user_data, const xmlChar* chars, int len) {
+void Derp::onCharacters(void* user_data, const xmlChar* chars, int) {
   Derp::Parser* parser = static_cast<Derp::Parser*>(user_data);
-  
   Glib::ustring str;
+
   try {
     str.assign(reinterpret_cast<const char*>(chars));
   } catch (std::exception e) {
-    std::cerr << "Error onCharacters casting to string: " << e.what() << std::endl;
-    std::cerr << "The characters were: " << chars << std::endl;
+    std::cerr << "Error casting '" << chars << "' to Glib::ustring: " << e.what() << std::endl;
   }
+
   parser->on_characters(str);
 }
 
