@@ -15,9 +15,6 @@
 namespace Derp {
   struct Socket_Info {
     Glib::RefPtr<Glib::IOChannel> channel;
-    curl_socket_t s;
-    int action;
-    CURL* curl;
     sigc::connection connection;
   };
 
@@ -31,17 +28,17 @@ namespace Derp {
 
     Glib::Dispatcher signal_download_finished;
     Glib::Dispatcher signal_download_error;
+
   private:
     Downloader& operator=(const Downloader&); // Evil func
     Downloader(const Downloader&); // Evil func
 
     void download_imgs(const std::list<Derp::Image>& imgs, const Glib::RefPtr<Gio::File>& p_dir);
     void download_url(const Glib::ustring& url, const Glib::RefPtr<Gio::File>&);
-    bool curl_setup(CURL* curl, const Derp::Image& img);
-    void collect_statistics(CURL* curl);
 
     Glib::ThreadPool m_threadPool;
 
+    mutable Glib::Mutex curl_mutex;
     CURLM* m_curlm;
     sigc::connection m_timeout_connection;
     int m_running_handles;
@@ -51,14 +48,16 @@ namespace Derp {
     double m_total_bytes;
     Glib::Timer m_timer;
 
+    bool curl_setup(CURL* curl, const Derp::Image& img);
+    void collect_statistics(CURL* curl);
     bool curl_timeout_expired_cb();
     void curl_check_info();
     void curl_addsock(curl_socket_t s, CURL *easy, int action);
     void curl_setsock(Socket_Info* info, curl_socket_t s, CURL* curl, int action);
     void curl_remsock(Derp::Socket_Info* info);
     bool curl_event_cb(Glib::IOCondition condition, curl_socket_t s);
+    void curl_event(int action, curl_socket_t s);
 
-    //    void curl_remsock(
     friend int curl_socket_cb(CURL *easy, curl_socket_t s, int action, void *userp, void *socketp);
     friend int curl_timer_cb(CURLM *multi, long timeout_ms, void *userp);
     friend size_t write_cb(void *ptr, size_t size, size_t nmemb, void *data);
@@ -74,7 +73,6 @@ namespace Derp {
 		    long timeout_ms, /* see above */
 		    void *userp);    /* private callback
 					pointer */
-
   size_t write_cb(void *ptr, size_t size, size_t nmemb, void *data);
 }
 

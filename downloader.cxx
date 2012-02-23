@@ -96,11 +96,12 @@ void Derp::Downloader::collect_statistics(CURL* curl) {
 
   std::cout << std::setw(6) << std::setprecision(5) << size / 1000.0 << " kB in " << std::setw(6) << std::setprecision(3) << total << " s. [" << std::setw(6) << std::setprecision(5) << speed/1000.0 << " kB/s] {Establishing: " << std::setw(6) << std::setprecision(3) << starttransfer << " s} -" << connects << " new conns, " << redirects << " redirects-" << " (Total: ";
   
-  if (m_total_bytes > 1000000) 
-    std::cout << std::setw(6) << std::setprecision(4) << m_total_bytes / 1000000.0 << " MB, Total Average Speed: " ;
+  if (m_total_bytes > 1000 * 1000) 
+    std::cout << std::setw(6) << std::setprecision(4) << m_total_bytes / 1000000.0 << " MB";
   else 
-    std::cout << std::setw(6) << std::setprecision(4) << m_total_bytes / 1000.0 << " kB, Total Average Speed: " ;
-  std::cout << std::setw(8) << std::setprecision(7) << (m_total_bytes / 1000.0) / m_timer.elapsed() << " kB/s)" << std::endl;
+    std::cout << std::setw(6) << std::setprecision(4) << m_total_bytes / 1000.0 << " kB";
+
+  std::cout << ", Total Average Speed: " << std::setw(8) << std::setprecision(7) << (m_total_bytes / 1000.0) / m_timer.elapsed() << " kB/s)" << std::endl;
 
 }
 
@@ -192,10 +193,13 @@ int Derp::curl_timer_cb(CURLM*,    /* multi handle */
   return 0;
 }
 
+/* 
+   Called from Glib::MainLoop when socket s has data
+*/
 bool Derp::Downloader::curl_event_cb(Glib::IOCondition condition, curl_socket_t s) {
-  CURLMcode code;
   int action = (condition & Glib::IO_IN ? CURL_CSELECT_IN : 0) |
     (condition & Glib::IO_OUT ? CURL_CSELECT_OUT : 0);
+  CURLMcode code;
 
   code = curl_multi_socket_action(m_curlm, s, action, &m_running_handles);
   if (code != CURLM_OK) {
@@ -211,16 +215,29 @@ bool Derp::Downloader::curl_event_cb(Glib::IOCondition condition, curl_socket_t 
   }
 }
 
-void Derp::Downloader::curl_setsock(Socket_Info* info, curl_socket_t s, CURL* curl, int action) {
+void Derp::Downlaoder::curl_event(int action, curl_socket_t s) {
+  Glib::Mutex::Lock lock(curl_mutex);
+  CURLMcode code;
+
+  code = curl_multi_socket_action(m_curlm, s, action, &m_running_handles);
+  if (code != CURLM_OK) {
+    std::cerr << "Error: Curl socket action error from event: " << curl_multi_strerror(code) << std::endl;
+  }
+  curl_check_info();
+  if (!m_running-handles) {
+    if (m_timeout_connection.connected())
+      m_timeout_connection.disconnect();
+    // Here we used to return false to disconnect this socket from the GIOChannel
+  }
+}
+
+void Derp::Downloader::curl_setsock(Socket_Info* info, curl_socket_t s, CURL*, int action) {
   Glib::IOCondition condition = Glib::IO_IN ^ Glib::IO_IN;
   if (action & CURL_POLL_IN)
     condition = Glib::IO_IN;
   if (action & CURL_POLL_OUT)
     condition = condition | Glib::IO_OUT;
 
-  info->s = s;
-  info->action = action;
-  info->curl = curl;
   if (info->connection.connected())
     info->connection.disconnect();
   info->connection = Glib::signal_io().connect( sigc::bind(sigc::mem_fun(*this, &Derp::Downloader::curl_event_cb), s), info->channel, condition );
@@ -247,12 +264,13 @@ void Derp::Downloader::curl_remsock(Socket_Info* info) {
 
 size_t Derp::write_cb(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
-  GFileOutputStream* gfos = (GFileOutputStream*) userdata;
+  GFileOutputStream* gfos = static_cast<GFileOutputStream*>(userdata);
   gssize written = 0;
   Glib::RefPtr<Gio::FileOutputStream> p_fos = Glib::wrap(gfos, true);
-  
+  // std::string str(static_cast<char*>(ptr), size*nmemb);
+
   try {
-    written = p_fos->write(ptr, size*nmemb);
+    written = p_fos->write(static_cast<char*>(ptr), size*nmemb);
   } catch (Gio::Error e) {
     std::cerr << "Error: Could not write to file: " << e.what() << std::endl; 
   }
