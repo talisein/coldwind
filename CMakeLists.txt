@@ -33,34 +33,35 @@ configure_file (
 
 # libpthread with pthread.h
 #find_package(pthread REQUIRED)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
-find_package(Git)
-if(Git_FOUND)
-
-endif(Git_FOUND)
-
-find_package(PkgConfig)
-
-pkg_check_modules(GTKMM3 gtkmm-3.0 REQUIRED)
-pkg_check_modules(GTHREAD gthread-2.0 REQUIRED)
-
-find_package(CURL REQUIRED)
-find_package(LibXml2 REQUIRED)
+cmake_policy(SET CMP0011 NEW)
 
 #set(CMAKE_BUILD_TYPE debug)
 set(CMAKE_CXX_FLAGS "-std=c++0x")
 set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -O0 -Wall -Wextra -pedantic" )
 set(CMAKE_CXX_FLAGS_RELEASE "-Os")
 
-add_definitions( -D_GNU_SOURCE ${LIBXML2_DEFINITIONS})
+find_package(CURL REQUIRED)
+set(LIBS ${LIBS} ${CURL_LIBRARIES})
+set(INCLUDES ${INCLUDES} ${CURL_INCLUDE_DIRS})
 
-link_directories(
-  ${GTKMM3_LIBRARY_DIRS} ${GTHREAD_LIBRARY_DIRS} ${LIBXML2_LIBRARY_DIRS} ${CURL_LIBRARY_DIRS})
+find_package(LibXml2 REQUIRED)
+set(LIBS ${LIBS} ${LIBXML2_LIBRARIES})
+set(INCLUDES ${INCLUDES} ${LIBXML2_INCLUDE_DIR})
+add_definitions( ${LIBXML2_DEFINITIONS} )
+
+find_package(GTK3 3.0 REQUIRED gtk gtkmm gthread)
+set(LIBS ${LIBS} ${GTK3_LIBRARIES})
+set(INCLUDES ${INCLUDES} ${GTK3_INCLUDE_DIRS})
+
+
+add_definitions( -D_GNU_SOURCE -DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED -DGSEAL_ENABLE )
 
 include_directories(
-  ${GTKMM3_INCLUDE_DIRS} ${GTHREAD_LIBRARY_DIRS} ${LIBXML2_INCLUDE_DIR} ${CURL_INCLUDE_DIRS})
+  ${GTK3_INCLUDE_DIRS} ${LIBXML2_INCLUDE_DIR} ${CURL_INCLUDE_DIRS})
 
 add_executable(coldwind main.cxx parser.cxx application.cxx hasher.cxx downloader.cxx image.cxx lurker.cxx manager.cxx)
 
-target_link_libraries(coldwind ${GTKMM3_LIBRARIES} ${GTHREAD_LIBRARIES} ${LIBXML2_LIBRARIES} ${CURL_LIBRARIES})
+target_link_libraries(coldwind ${LIBS})
 
