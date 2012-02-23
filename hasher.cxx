@@ -62,12 +62,12 @@ void Derp::Hasher::insert_filepath(const std::string& path) {
   m_filepath_set.insert(path);
 }
 
-bool Derp::Hasher::is_hashed(const std::string& path) {
+bool Derp::Hasher::is_hashed(const std::string& path) const {
   Glib::Mutex::Lock lock(filepath_mutex);
   return m_filepath_set.count(path) > 0;
 }
 
-bool Derp::Hasher::is_downloaded(const Derp::Image& image) {
+bool Derp::Hasher::is_downloaded(const Derp::Image& image) const {
   Glib::Mutex::Lock lock(hash_mutex);
   return m_image_set.count(image) > 0;
 }

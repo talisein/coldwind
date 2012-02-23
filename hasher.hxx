@@ -16,7 +16,7 @@ namespace Derp {
     void hash_async(const Glib::RefPtr<Gio::File>& dir);
     Glib::Dispatcher signal_hashing_finished;
 
-    bool is_downloaded(const Image& img);
+    bool is_downloaded(const Image& img) const;
 
   private:
     Hasher& operator=(const Hasher&); // Evil func
@@ -31,9 +31,9 @@ namespace Derp {
     **/
     void insert_image(const Derp::Image& image);
     void insert_filepath(const std::string& filepath);
-    bool is_hashed(const std::string& path);
-    Glib::Mutex hash_mutex;
-    Glib::Mutex filepath_mutex;
+    bool is_hashed(const std::string& path) const;
+    mutable Glib::Mutex hash_mutex;
+    mutable Glib::Mutex filepath_mutex;
     std::set<std::string> m_filepath_set;
     std::set<Derp::Image> m_image_set;
     Glib::ThreadPool m_threadPool;
