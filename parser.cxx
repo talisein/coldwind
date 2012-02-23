@@ -115,11 +115,10 @@ void Derp::Parser::parse_thread(const Glib::ustring& url) {
 }
 
 int Derp::Parser::request_downloads(Derp::Downloader& downloader, const Derp::Hasher& hasher, const Derp::Request& request) { 
-  const Derp::Hasher* const p_hasher = &hasher;
 
-  m_images.remove_if([p_hasher](Derp::Image img) { return p_hasher->is_downloaded(img); });
+  m_images.remove_if([&hasher](Derp::Image img) { return hasher.is_downloaded(img); });
 
-  m_images.remove_if([request](Derp::Image img) { return !img.is_bigger(request.xDim, request.yDim); });
+  m_images.remove_if([&request](Derp::Image img) { return !img.is_bigger(request.xDim, request.yDim); });
 
   downloader.download_async(m_images, request);
   return m_images.size();

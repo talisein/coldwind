@@ -8,7 +8,7 @@ namespace Derp {
     Image(const Glib::ustring& uri, const Glib::ustring& md5hex, const Glib::ustring& size, int xDim, int yDim, const Glib::ustring& origFilename);
     Image(const std::string& filepath, const Glib::ustring& md5hex);
 
-    bool is_bigger(int xDim, int yDim);
+    bool is_bigger(int xDim, int yDim) const;
 
     Glib::ustring getUrl() const { return m_uri; };
   private:

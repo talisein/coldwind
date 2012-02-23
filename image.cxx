@@ -13,11 +13,15 @@ Derp::Image::Image(const Glib::ustring& uri, const Glib::ustring& md5hex, const 
 
 Derp::Image::Image(const std::string& filepath, const Glib::ustring& md5hex) :
   m_uri(filepath),
-  m_md5(md5hex)
+  m_md5(md5hex),
+  m_size(0),
+  m_x(0),
+  m_y(0),
+  m_original_filename("")
 {
 }
 
-bool Derp::Image::is_bigger(int xDim, int yDim) {
+bool Derp::Image::is_bigger(int xDim, int yDim) const {
   return m_x >= xDim && m_y >= yDim;
 }
 
