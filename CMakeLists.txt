@@ -3,6 +3,14 @@ project (Coldwind CXX)
 
 Include(CPack)
 
+if(WIN32)
+  set(COLDWIND_WIN32 "true")
+  set(COLDWIND_WIN32_DEFINE "1")
+else()
+  set(COLDWIND_WIN32 "false")
+  set(COLDWIND_WIN32_DEFINE "0")
+endif()
+
 # The version number
 set (Coldwind_VERSION_MAJOR 0)
 set (Coldwind_VERSION_MINOR 1)

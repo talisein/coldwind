@@ -2,6 +2,7 @@
 #include <iostream>
 #include <glibmm/thread.h>
 #include <iomanip>
+#include "config.h"
 
 Derp::Downloader::Downloader() : m_threadPool(4), 
 				 m_curlm(curl_multi_init())
@@ -68,18 +69,31 @@ int Derp::curl_socket_cb(CURL *easy, /* easy handle */
   return 0;
 }
 
+static void curl_check_code_statistics(CURLcode code) {
+  if (code != CURLE_OK) {
+    std::cerr << "Error: While collecting statistics on a completed download: " << curl_easy_strerror(code) << std::endl;
+  }
+}
+
 void Derp::Downloader::collect_statistics(CURL* curl) {
   CURLcode code;
   double total, starttransfer, size, speed;
   long connects, redirects;
 
   code = curl_easy_getinfo(curl, CURLINFO_NUM_CONNECTS, &connects);
+  curl_check_code_statistics(code);
   code = curl_easy_getinfo(curl, CURLINFO_REDIRECT_COUNT, &redirects);
+  curl_check_code_statistics(code);
   code = curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &total);
+  curl_check_code_statistics(code);
   code = curl_easy_getinfo(curl, CURLINFO_SIZE_DOWNLOAD, &size);
+  curl_check_code_statistics(code);
   m_total_bytes += size;
   code = curl_easy_getinfo(curl, CURLINFO_SPEED_DOWNLOAD, &speed);
+  curl_check_code_statistics(code);
   code = curl_easy_getinfo(curl, CURLINFO_STARTTRANSFER_TIME, &starttransfer);
+  curl_check_code_statistics(code);
+
   std::cout << std::setw(6) << std::setprecision(5) << size / 1000.0 << " kB in " << std::setw(6) << std::setprecision(3) << total << " s. [" << std::setw(6) << std::setprecision(5) << speed/1000.0 << " kB/s] {Establishing: " << std::setw(6) << std::setprecision(3) << starttransfer << " s} -" << connects << " new conns, " << redirects << " redirects-" << " (Total: ";
   
   if (m_total_bytes > 1000000) 
@@ -215,7 +229,11 @@ void Derp::Downloader::curl_setsock(Socket_Info* info, curl_socket_t s, CURL* cu
 void Derp::Downloader::curl_addsock(curl_socket_t s, CURL *easy, int action) {
   Socket_Info* info = new Socket_Info;
   // TODO: Explicitly call the win32_socket method here
+  #if COLDWIND_WINDOWS
+  info->channel = Glib::IOChannel::create_from_win32_socket(s);
+  #else
   info->channel = Glib::IOChannel::create_from_fd(s);
+  #endif
   curl_setsock(info, s, easy, action);
   curl_multi_assign(m_curlm, s, info);
 }
