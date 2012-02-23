@@ -230,9 +230,16 @@ void Derp::Downloader::curl_remsock(Socket_Info* info) {
 size_t Derp::write_cb(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
   GFileOutputStream* gfos = (GFileOutputStream*) userdata;
+  gssize written = 0;
   Glib::RefPtr<Gio::FileOutputStream> p_fos = Glib::wrap(gfos, true);
   
-  return p_fos->write(ptr, size*nmemb);
+  try {
+    written = p_fos->write(ptr, size*nmemb);
+  } catch (Gio::Error e) {
+    std::cerr << "Error: Could not write to file: " << e.what() << std::endl; 
+  }
+
+  return written;
 }
 
 bool Derp::Downloader::curl_setup(CURL* curl, const Derp::Image& img) {
