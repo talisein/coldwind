@@ -1,4 +1,3 @@
-#include <glib.h>
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
