@@ -1,0 +1,14 @@
+You'll need cmake, libcurl, libxml2, and gtkmm-3.
+
+cmake .  
+
+ccmake .  
+  In ccmake set CMAKE_BUILD_TYPE to 'release' or 'debug' if you're
+  developing. Be sure to push 'c' to make the configuration take
+  effect after you push enter.
+
+make
+
+sudo make install
+
+coldwind
