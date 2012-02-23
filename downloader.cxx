@@ -36,15 +36,26 @@ Derp::Downloader::Downloader() : m_threadPool(4),
     exit(EXIT_FAILURE);
   }
 
-  //  code = curl_multi_setopt(m_curlm, CURLMOPT_PIPELINING, 0L);
-  code = curl_multi_setopt(m_curlm, CURLMOPT_MAXCONNECTS, 5L);
-  //code = curl_multi_setopt(m_curlm, CURLMOPT_MAXCONNECTS, 10L);
+  for ( int i = 0; i < COLDWIND_CURL_CONNECTIONS; i++ ) {
+    CURL* curl = curl_easy_init();
+    if (curl) {
+      m_curl_queue.push(curl);
+    } else {
+      std::cerr << "Error: Couldn't create a curl handle! Out of memory already?" << std::endl;
+      break;
+    }
+  }
 }
 
 Derp::Downloader::~Downloader() {
   CURLMcode code = curl_multi_cleanup( m_curlm );
   if (code != CURLM_OK) {
     std::cerr << "Error: While cleaning up curl: " << curl_multi_strerror(code) << std::endl;
+  }
+
+  while ( !m_curl_queue.empty() ) {
+    curl_easy_cleanup( m_curl_queue.front() );
+    m_curl_queue.pop();
   }
 }
 
@@ -159,7 +170,8 @@ void Derp::Downloader::curl_check_info() {
 	  }
 	  m_imgs.erase(iter);
 	} else {
-	  curl_easy_cleanup(curl);
+	  curl_easy_reset(curl);
+	  m_curl_queue.push(curl);
 	}
 	break;
       default:
@@ -360,19 +372,30 @@ bool Derp::Downloader::curl_setup(CURL* curl, const Derp::Image& img) {
   return false;
 }
 
-void Derp::Downloader::download_imgs_multi(const Derp::Image& img) {
+void Derp::Downloader::download_imgs_multi() {
   Glib::Mutex::Lock lock(curl_mutex);
   CURLMcode m_code;
-  CURL* curl = curl_easy_init();
-  bool setup_ok = curl_setup(curl, img);
-  if (setup_ok) {
-    m_code = curl_multi_add_handle(m_curlm, curl); 
-    if (m_code != CURLM_OK) {
-      std::cerr << "Error: While adding curl handle to curl multi handle: " << curl_multi_strerror(m_code) << std::endl; 
-      curl_easy_cleanup(curl);
+
+  while ( !m_curl_queue.empty() ) {
+    auto it = m_imgs.begin();
+    if (it == m_imgs.end()) {
+      break;
+    } else {
+      CURL* curl = m_curl_queue.front(); m_curl_queue.pop();
+      bool setup_ok = curl_setup(curl, *it);
+      if (!setup_ok) {
+	curl_easy_reset(curl);
+	m_curl_queue.push(curl);
+      } else {
+	m_code = curl_multi_add_handle(m_curlm, curl); 
+	if (m_code != CURLM_OK) {
+	  std::cerr << "Error: While adding curl handle to curl multi handle: " << curl_multi_strerror(m_code) << std::endl; 
+	  curl_easy_reset(curl);
+	  m_curl_queue.push(curl);
+	}
+      } 
     }
-  } else {
-    curl_easy_cleanup(curl);
+    m_imgs.erase(it);
   }
 }
 
@@ -382,13 +405,8 @@ void Derp::Downloader::download_async(const std::list<Derp::Image>& imgs, const 
   m_timer.reset();
   m_timer.start();
   m_total_bytes = 0;
-  for ( int i = 0; i < 5; i++ ) {
-    auto it = m_imgs.begin();
-    if (it == m_imgs.end())
-      break;
-    m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Derp::Downloader::download_imgs_multi), *it) );
-  m_imgs.erase(it);
-  }
+
+  m_threadPool.push( sigc::mem_fun(*this, &Derp::Downloader::download_imgs_multi) );
 }
 
 void Derp::Downloader::download_async_easy(const std::list<Derp::Image>& imgs, const Derp::Request& request) {

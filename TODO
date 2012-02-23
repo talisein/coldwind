@@ -28,9 +28,6 @@
   * The hasher shouldn't try to hash anything larger than 4chan's
     maximum image size [Easy]
 
-  * Store a cache of CURL*s in Downloader rather than creating new
-    ones every time. [Easy+]
-
   * Create a thread subdirectory option. Maybe a board too. [Medium]
 
   * In Glib 3.32, use GResources. And it looks like GApplication will

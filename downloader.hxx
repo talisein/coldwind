@@ -19,6 +19,8 @@ namespace Derp {
     sigc::connection connection;
   };
 
+  const int COLDWIND_CURL_CONNECTIONS = 5;
+
   class Downloader {
   public:
     Downloader();
@@ -41,6 +43,7 @@ namespace Derp {
 
     mutable Glib::Mutex curl_mutex;
     CURLM* m_curlm;
+    std::queue<CURL*> m_curl_queue;
     sigc::connection m_timeout_connection;
     int m_running_handles;
     std::map<CURL*, Glib::RefPtr<Gio::FileOutputStream>> m_fos_map;
@@ -60,7 +63,7 @@ namespace Derp {
     void curl_timeout_expired();
     bool curl_event_cb(Glib::IOCondition condition, curl_socket_t s);
     void curl_event(int action, curl_socket_t s);
-    void download_imgs_multi(const Derp::Image& img);
+    void download_imgs_multi();
 
     friend int curl_socket_cb(CURL *easy, curl_socket_t s, int action, void *userp, void *socketp);
     friend int curl_timer_cb(CURLM *multi, long timeout_ms, void *userp);
