@@ -9,9 +9,10 @@
     make sure you test this)
 
   * Record download statistics from curl (Time, Bytes), populate back
-    to UI [Medium] 
+    to UI [Medium] [Mostly done]
 
-  * Decode curl's error messages and put on std:cerr [Easy]
+  * Decode curl's error messages and put on std:cerr [Easy] [Mostly
+    done]
 
   * Redirect std::cout and std::cerr to an optional popup message log
     [Hard] (There's actually a Glib API for this)
@@ -24,11 +25,18 @@
   * Overlay some lurker info text on the image [Medium]
   ** Or some sort of visual lurker feedback. I dunno. [Hard]
 
-  * Catch exceptions in Downloader.cxx::write_cb [Easy] If we don't
-    write all the bytes, curl is going to abort. Parse its specific
-    error code in curl_check_info() and either suppress the additional
-    error message, or otherwise do something sensible with regards to
-    the message you generate in the exception handler [Easy]
-
   * The hasher shouldn't try to hash anything larger than 4chan's
     maximum image size [Easy]
+
+  * The gif animation isn't smooth anymore during downloads. So we
+    should do all our Downloader work in a worker thread. This should
+    involve storing a Glib::Thread reference and join()ing it before
+    spinning up a new one. Also might want a mutex around m_mcurl just
+    to be sure. In fact, we need one for sure (While adding curl
+    handles in the initial kickstart, we might get a timeout callback)
+    [Hard]
+
+  * Store a cache of CURL*s in Downloader rather than creating new
+    ones every time.
+
+  * Create a thread subdirectory option. Maybe a board too.
