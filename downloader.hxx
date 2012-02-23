@@ -23,8 +23,8 @@ namespace Derp {
     Downloader();
     ~Downloader();
 
+    void download_async_easy(const std::list<Derp::Image>& imgs, const Glib::RefPtr<Gio::File>& p_dir);
     void download_async(const std::list<Derp::Image>& imgs, const Glib::RefPtr<Gio::File>& p_dir);
-    void download_imgs_multi(const std::list<Derp::Image>& imgs, const Glib::RefPtr<Gio::File>& p_dir);
 
     Glib::Dispatcher signal_download_finished;
     Glib::Dispatcher signal_download_error;
@@ -48,15 +48,18 @@ namespace Derp {
     double m_total_bytes;
     Glib::Timer m_timer;
 
-    bool curl_setup(CURL* curl, const Derp::Image& img);
+    void ASSERT_LOCK(std::string func) const;
     void collect_statistics(CURL* curl);
-    bool curl_timeout_expired_cb();
+    bool curl_setup(CURL* curl, const Derp::Image& img);
     void curl_check_info();
     void curl_addsock(curl_socket_t s, CURL *easy, int action);
     void curl_setsock(Socket_Info* info, curl_socket_t s, CURL* curl, int action);
     void curl_remsock(Derp::Socket_Info* info);
+    bool curl_timeout_expired_cb();
+    void curl_timeout_expired();
     bool curl_event_cb(Glib::IOCondition condition, curl_socket_t s);
     void curl_event(int action, curl_socket_t s);
+    void download_imgs_multi(const Derp::Image& img);
 
     friend int curl_socket_cb(CURL *easy, curl_socket_t s, int action, void *userp, void *socketp);
     friend int curl_timer_cb(CURLM *multi, long timeout_ms, void *userp);

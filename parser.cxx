@@ -122,7 +122,7 @@ int Derp::Parser::request_downloads(Derp::Downloader& downloader, Derp::Hasher* 
   m_images.remove_if([xDim, yDim](Derp::Image img) { return !img.is_bigger(xDim, yDim); });
 
   int count = m_images.size();
-  downloader.download_imgs_multi(m_images, p_dir);
+  downloader.download_async(m_images, p_dir);
   return count;
 }
 
