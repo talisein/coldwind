@@ -15,7 +15,7 @@
     done]
 
   * Redirect std::cout and std::cerr to an optional popup message log
-    [Hard] (There's actually a Glib API for this)
+    [Hard] (There's actually a Glib API for this in g_log)
 
   * The parser should recognize 404s, and the Lurker should drop it
     [Medium]
@@ -28,15 +28,12 @@
   * The hasher shouldn't try to hash anything larger than 4chan's
     maximum image size [Easy]
 
-  * The gif animation isn't smooth anymore during downloads. So we
-    should do all our Downloader work in a worker thread. This should
-    involve storing a Glib::Thread reference and join()ing it before
-    spinning up a new one. Also might want a mutex around m_mcurl just
-    to be sure. In fact, we need one for sure (While adding curl
-    handles in the initial kickstart, we might get a timeout callback)
-    [Hard]
-
   * Store a cache of CURL*s in Downloader rather than creating new
-    ones every time.
+    ones every time. [Easy+]
 
-  * Create a thread subdirectory option. Maybe a board too.
+  * Create a thread subdirectory option. Maybe a board too. [Medium]
+
+  * In Glib 3.32, use GResources. And it looks like GApplication will
+    finally land. [Longterm]
+
+  * Store a hash cache [Medium]

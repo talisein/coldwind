@@ -376,9 +376,9 @@ void Derp::Downloader::download_imgs_multi(const Derp::Image& img) {
   }
 }
 
-void Derp::Downloader::download_async(const std::list<Derp::Image>& imgs, const Glib::RefPtr<Gio::File>& p_dir) {
+void Derp::Downloader::download_async(const std::list<Derp::Image>& imgs, const Derp::Request& request) {
   m_imgs = imgs;
-  m_target_dir = p_dir;
+  m_target_dir = request.target_directory;
   m_timer.reset();
   m_timer.start();
   m_total_bytes = 0;
@@ -386,32 +386,32 @@ void Derp::Downloader::download_async(const std::list<Derp::Image>& imgs, const 
     auto it = m_imgs.begin();
     if (it == m_imgs.end())
       break;
-    m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Derp::Downloader::download_imgs_multi_handle), *it) );
+    m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Derp::Downloader::download_imgs_multi), *it) );
   m_imgs.erase(it);
   }
 }
 
-void Derp::Downloader::download_async_easy(const std::list<Derp::Image>& imgs, const Glib::RefPtr<Gio::File>& p_dir) {
-  Glib::Thread::create( sigc::bind(sigc::mem_fun(*this, &Derp::Downloader::download_imgs), imgs, p_dir), false);
+void Derp::Downloader::download_async_easy(const std::list<Derp::Image>& imgs, const Derp::Request& request) {
+  m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Derp::Downloader::download_imgs), imgs, request));
 }
 
-void Derp::Downloader::download_imgs(const std::list<Derp::Image>& imgs, const Glib::RefPtr<Gio::File>& p_dir) {
+void Derp::Downloader::download_imgs(const std::list<Derp::Image>& imgs, const Derp::Request& request) {
   for( auto it = imgs.begin(); it != imgs.end(); it++) {
-    m_threadPool.push(sigc::bind(sigc::mem_fun(*this, &Derp::Downloader::download_url), it->getUrl(), p_dir ));
+    m_threadPool.push(sigc::bind(sigc::mem_fun(*this, &Derp::Downloader::download_url), it->getUrl(), request ));
   }
 }
 
-void Derp::Downloader::download_url(const Glib::ustring& url, const Glib::RefPtr<Gio::File>& p_dir) {
+void Derp::Downloader::download_url(const Glib::ustring& url, const Derp::Request& request) {
   CURL *curl = curl_easy_init();
   CURLcode res, code;
   Glib::ustring filename(url);
   filename.erase(0, url.find_last_of("/") + 1);
   Glib::RefPtr<Gio::FileOutputStream> p_fos;
   try {
-    Glib::RefPtr<Gio::File> p_file = Gio::File::create_for_path(Glib::build_filename(p_dir->get_path(), filename));
+    Glib::RefPtr<Gio::File> p_file = Gio::File::create_for_path(Glib::build_filename(request.target_directory->get_path(), filename));
     p_fos = p_file->create_file();
   } catch (Gio::Error e) {
-    std::cerr << "Failure creating file " << Glib::build_filename(p_dir->get_path(), filename) << std::endl;
+    std::cerr << "Failure creating file " << Glib::build_filename(request.target_directory->get_path(), filename) << std::endl;
     std::cerr << "\tThere's probably a file named that already. Skipping." << std::endl;
     signal_download_finished(); // Call so we don't hang the progress bar? 
 

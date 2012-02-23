@@ -3,14 +3,15 @@
 
 #include <queue>
 #include <list>
+#include <curl/curl.h>
+#include <giomm/file.h>
 #include <glibmm/ustring.h>
 #include <glibmm/dispatcher.h>
 #include <glibmm/threadpool.h>
-#include <curl/curl.h>
-#include "image.hxx"
 #include <glibmm/iochannel.h>
-#include <giomm/file.h>
 #include <glibmm/timer.h>
+#include "image.hxx"
+#include "request.hxx"
 
 namespace Derp {
   struct Socket_Info {
@@ -23,8 +24,8 @@ namespace Derp {
     Downloader();
     ~Downloader();
 
-    void download_async_easy(const std::list<Derp::Image>& imgs, const Glib::RefPtr<Gio::File>& p_dir);
-    void download_async(const std::list<Derp::Image>& imgs, const Glib::RefPtr<Gio::File>& p_dir);
+    void download_async_easy(const std::list<Derp::Image>&, const Derp::Request&);
+    void download_async(const std::list<Derp::Image>&, const Derp::Request&);
 
     Glib::Dispatcher signal_download_finished;
     Glib::Dispatcher signal_download_error;
@@ -33,8 +34,8 @@ namespace Derp {
     Downloader& operator=(const Downloader&); // Evil func
     Downloader(const Downloader&); // Evil func
 
-    void download_imgs(const std::list<Derp::Image>& imgs, const Glib::RefPtr<Gio::File>& p_dir);
-    void download_url(const Glib::ustring& url, const Glib::RefPtr<Gio::File>&);
+    void download_imgs(const std::list<Derp::Image>& imgs, const Derp::Request&);
+    void download_url(const Glib::ustring& url, const Derp::Request&);
 
     Glib::ThreadPool m_threadPool;
 

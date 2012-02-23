@@ -5,15 +5,9 @@
 #include "parser.hxx"
 #include "hasher.hxx"
 #include "downloader.hxx"
+#include "request.hxx"
 
 namespace Derp {
-  struct Request {
-    Glib::ustring thread_url;
-    Glib::RefPtr<Gio::File> target_directory;
-    int minutes;
-    int xDim;
-    int yDim;
-  };
 
   class Manager {
   public:
@@ -42,7 +36,7 @@ namespace Derp {
     Derp::Hasher m_hasher;
     Derp::Downloader m_downloader;
 
-    Derp::Request m_data;
+    Derp::Request m_request;
 
   };
 }

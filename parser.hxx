@@ -8,6 +8,7 @@
 #include "image.hxx"
 #include "downloader.hxx"
 #include "hasher.hxx"
+#include "request.hxx"
 
 namespace Derp {
 
@@ -18,7 +19,7 @@ namespace Derp {
     ~Parser();
 
     void parse_async(const Glib::ustring& url);
-    int request_downloads(Derp::Downloader& downloader, Derp::Hasher* const hasher, const Glib::RefPtr<Gio::File>, int xDim = -1, int yDim = -1);
+    int request_downloads(Derp::Downloader&, const Derp::Hasher&, const Derp::Request&);
     Glib::Dispatcher signal_parsing_finished;
 
 
