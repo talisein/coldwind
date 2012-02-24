@@ -8,6 +8,9 @@ namespace Derp {
     int minutes;
     int xDim;
     int yDim;
+    bool useBoardSubdir;
+    bool useThreadSubdir;
+    bool useOriginalFilename;
   };
 }
 

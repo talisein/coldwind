@@ -70,7 +70,11 @@ void Derp::Application::signal_go() {
 	  m_fileChooserButton->get_file(),
 	  static_cast<int>(m_lurkAdjustment->get_value()),
 	  static_cast<int>(m_xAdjustment->get_value()),
-	  static_cast<int>(m_yAdjustment->get_value()) });
+	  static_cast<int>(m_yAdjustment->get_value()),
+	  m_boardDirCheckbox->get_active(),
+	  m_threadDirCheckbox->get_active(),
+	  m_originalFilenameCheckbox->get_active()
+	  });
     if (is_accepted) {
       m_goButton->set_sensitive(false);
     }
