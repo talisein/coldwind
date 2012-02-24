@@ -37,9 +37,12 @@ void Derp::Hasher::hash_directory(const Glib::RefPtr<Gio::File>& dir) {
 void Derp::Hasher::hash_file(const Glib::RefPtr<Gio::File>& file) {
     char* contents;
     gsize length;
+
     try {
       if (file->load_contents(contents, length)) {
-	Glib::ustring md5hex = Glib::Checksum::compute_checksum(Glib::Checksum::ChecksumType::CHECKSUM_MD5, reinterpret_cast<guchar*>(contents), length);
+	std::string md5hex = Glib::Checksum::compute_checksum(Glib::Checksum::ChecksumType::CHECKSUM_MD5,
+							      reinterpret_cast<guchar*>(contents),
+							      length);
 	insert_image({file->get_path(), md5hex});
 	insert_filepath(file->get_path());
 	g_free(contents);
