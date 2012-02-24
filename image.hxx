@@ -1,12 +1,13 @@
 #ifndef IMAGE_HXX
 #define IMAGE_HXX
 #include <glibmm/ustring.h>
+#include <string>
 
 namespace Derp {
   class Image {
   public:
-    Image(const Glib::ustring& uri, const Glib::ustring& md5hex, const Glib::ustring& size, int xDim, int yDim, const Glib::ustring& origFilename);
-    Image(const std::string& filepath, const Glib::ustring& md5hex);
+    Image(const Glib::ustring& uri, const std::string& md5hex, const Glib::ustring& size, int xDim, int yDim, const Glib::ustring& origFilename);
+    Image(const std::string& filepath, const std::string& md5hex);
 
     bool is_bigger(int xDim, int yDim) const;
 
@@ -14,7 +15,7 @@ namespace Derp {
   private:
     // URL or file path
     Glib::ustring m_uri;
-    Glib::ustring m_md5;
+    std::string m_md5;
     Glib::ustring m_size;
     int m_x;
     int m_y;
