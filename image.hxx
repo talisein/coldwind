@@ -1,7 +1,7 @@
 #ifndef IMAGE_HXX
 #define IMAGE_HXX
 #include <glibmm/ustring.h>
-#include <string>
+
 
 namespace Derp {
   class Image {

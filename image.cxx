@@ -12,7 +12,11 @@ Derp::Image::Image(const Glib::ustring& uri, const std::string& md5hex, const Gl
 
 Derp::Image::Image(const std::string& filepath, const std::string& md5hex) :
   m_uri(filepath),
-  m_md5(md5hex)
+  m_md5(md5hex),
+  m_size("0 KB"),
+  m_x(0),
+  m_y(0),
+  m_original_filename("")
 {
 }
 
