@@ -1,12 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <!-- interface-requires gtk+ 3.0 -->
-  <object class="GtkAdjustment" id="lurkAdjustment">
-    <property name="upper">1000</property>
-    <property name="value">20</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
   <object class="GtkWindow" id="mainWindow">
     <property name="can_focus">False</property>
     <property name="title" translatable="yes">Coldwind - Because you'll never have too much Ika Musume</property>
@@ -99,6 +93,7 @@
                 <property name="hexpand">True</property>
                 <property name="orientation">vertical</property>
                 <property name="action">select-folder</property>
+                <property name="filter">filefilter1</property>
                 <property name="title" translatable="yes">Select a Directory</property>
               </object>
               <packing>
@@ -116,7 +111,74 @@
             <property name="height">1</property>
           </packing>
         </child>
-        <child>
+	<child>
+	  <object class="GtkGrid" id="gridCheckboxs">
+	    <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="hexpand">True</property>
+            <property name="column_homogeneous">True</property>
+	    <child>
+	      <object class="GtkCheckButton" id="boardDirCheckbox">
+                <property name="label" translatable="yes">Board Subdir</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">False</property>
+                <property name="use_action_appearance">False</property>
+                <property name="xalign">0</property>
+                <property name="active">True</property>
+                <property name="draw_indicator">True</property>
+              </object>
+              <packing>
+                <property name="left_attach">0</property>
+                <property name="top_attach">0</property>
+                <property name="width">1</property>
+                <property name="height">1</property>
+              </packing>
+	    </child>
+	    <child>
+	      <object class="GtkCheckButton" id="threadDirCheckbox">
+                <property name="label" translatable="yes">Thread Subdir</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">False</property>
+                <property name="use_action_appearance">False</property>
+                <property name="xalign">0</property>
+                <property name="active">True</property>
+                <property name="draw_indicator">True</property>
+              </object>
+              <packing>
+                <property name="left_attach">1</property>
+                <property name="top_attach">0</property>
+                <property name="width">1</property>
+                <property name="height">1</property>
+              </packing>
+	    </child>
+	    <child>
+	      <object class="GtkCheckButton" id="originalFilenameCheckbox">
+                <property name="label" translatable="yes">Original Filename</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">False</property>
+                <property name="use_action_appearance">False</property>
+                <property name="xalign">0</property>
+                <property name="draw_indicator">True</property>
+              </object>
+              <packing>
+                <property name="left_attach">2</property>
+                <property name="top_attach">0</property>
+                <property name="width">1</property>
+                <property name="height">1</property>
+              </packing>
+	</child>
+	  </object>
+          <packing>
+            <property name="left_attach">0</property>
+            <property name="top_attach">2</property>
+            <property name="width">1</property>
+            <property name="height">1</property>
+          </packing>
+	</child>
+	<child>
           <object class="GtkImage" id="killMeImage">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
@@ -126,7 +188,7 @@
           </object>
           <packing>
             <property name="left_attach">0</property>
-            <property name="top_attach">2</property>
+            <property name="top_attach">3</property>
             <property name="width">1</property>
             <property name="height">1</property>
           </packing>
@@ -138,7 +200,7 @@
           </object>
           <packing>
             <property name="left_attach">0</property>
-            <property name="top_attach">3</property>
+            <property name="top_attach">4</property>
             <property name="width">1</property>
             <property name="height">1</property>
           </packing>
@@ -248,7 +310,7 @@
           </object>
           <packing>
             <property name="left_attach">0</property>
-            <property name="top_attach">4</property>
+            <property name="top_attach">5</property>
             <property name="width">1</property>
             <property name="height">1</property>
           </packing>
@@ -258,12 +320,18 @@
   </object>
   <object class="GtkAdjustment" id="xAdjustment">
     <property name="upper">10000</property>
-    <property name="step_increment">50</property>
+    <property name="step_increment">100</property>
     <property name="page_increment">250</property>
   </object>
   <object class="GtkAdjustment" id="yAdjustment">
     <property name="upper">10000</property>
-    <property name="step_increment">50</property>
+    <property name="step_increment">100</property>
     <property name="page_increment">250</property>
   </object>
+  <object class="GtkAdjustment" id="lurkAdjustment">
+    <property name="upper">1000</property>
+    <property name="step_increment">30</property>
+    <property name="page_increment">600</property>
+  </object>
+  <object class="GtkFileFilter" id="filefilter1"/>
 </interface>
