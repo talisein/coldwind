@@ -34,3 +34,5 @@
     finally land. [Longterm]
 
   * Store a hash cache [Medium]
+
+  * Accept options for number of hashing threads & curl connections [Easy]
