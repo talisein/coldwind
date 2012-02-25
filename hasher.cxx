@@ -9,12 +9,34 @@ Derp::Hasher::Hasher() : m_threadPool(8) {
 
 }
 
-void Derp::Hasher::hash_async(const Glib::RefPtr<Gio::File>& dir) {
-  Glib::Thread::create( sigc::bind(sigc::mem_fun(*this, &Hasher::hash_directory), dir), false);
+void Derp::Hasher::hash_async(const Derp::Request& request) {
+  m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Hasher::hash), request) );
+}
+
+void Derp::Hasher::hash(const Derp::Request& request) {
+  Glib::RefPtr<Gio::File> base = request.getHashDirectory();
+  m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Hasher::hash_directory), base));
+
+  auto thread_dir = base->get_child(Glib::filename_from_utf8(request.getThread()));
+  if (thread_dir->query_exists()) {
+    m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Hasher::hash_directory), thread_dir) );
+  }
+
+  auto board_dir = base->get_child(Glib::filename_from_utf8(request.getBoard()));
+  if (board_dir->query_exists()) {
+    auto enumerator = board_dir->enumerate_children();
+    for ( auto info = enumerator->next_file(); info != 0; info = enumerator->next_file()) {
+      if ( info->get_file_type() == Gio::FileType::FILE_TYPE_DIRECTORY ) {
+	m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Hasher::hash_directory),
+				      board_dir->get_child(info->get_name())));
+      }
+    }
+  }
 }
 
 void Derp::Hasher::hash_directory(const Glib::RefPtr<Gio::File>& dir) {
-  Glib::RefPtr<Gio::FileEnumerator> enumerator = dir->enumerate_children();
+  Glib
+::RefPtr<Gio::FileEnumerator> enumerator = dir->enumerate_children();
   for(auto info = enumerator->next_file(); info != 0; info = enumerator->next_file()) {
     Gio::FileType fileType = info->get_file_type();
     if (fileType != Gio::FileType::FILE_TYPE_REGULAR)

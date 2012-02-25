@@ -112,7 +112,7 @@ void Derp::Application::downloads_finished(int, const Request& request) {
   }
 
   m_goButton->set_sensitive(true);
-  if (request.minutes > 0.0) {
+  if (!request.isExpired()) {
     m_lurker.add_async(request);
   }
 }

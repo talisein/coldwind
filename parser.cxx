@@ -2,6 +2,7 @@
 #include <iomanip>
 #include <algorithm>
 #include "parser.hxx"
+#include "utils.hxx"
 
 Derp::Parser::Parser() {
   sax = (htmlSAXHandlerPtr) calloc(1, sizeof(htmlSAXHandler));
@@ -44,9 +45,9 @@ void Derp::onCharacters(void* user_data, const xmlChar* chars, int) {
   parser->on_characters(str);
 }
 
-void Derp::Parser::parse_async(const Glib::ustring& url) {
+void Derp::Parser::parse_async(const Derp::Request& request) {
   m_images.clear();
-  Glib::Thread::create( sigc::bind(sigc::mem_fun(this, &Parser::parse_thread), url), false);
+  Glib::Thread::create( sigc::bind(sigc::mem_fun(this, &Parser::parse_thread), request), false);
 }
 
 void Derp::Parser::on_characters(const Glib::ustring& str) {
@@ -100,7 +101,7 @@ void Derp::Parser::on_start_element(Glib::ustring name, std::map<Glib::ustring, 
       st << std::setw(2) << static_cast<int>(md5_binary[i]);
     }
     g_free(md5_binary);
-    m_images.push_back({curSourceUrl, st.str(), attr_map.find("alt")->second, curxDim, curyDim, curOrigFilename});
+    m_images.push_back({curSourceUrl, st.str(), attr_map.find("alt")->second, curxDim, curyDim, curOrigFilename, request_.useOriginalFilename()});
     curSourceUrl = "";
 
   }
@@ -109,16 +110,17 @@ void Derp::Parser::on_start_element(Glib::ustring name, std::map<Glib::ustring, 
 /* Uses libxml to fetch the 4ch thread from the network. Parsing
    happens in the SAX methods.
  */
-void Derp::Parser::parse_thread(const Glib::ustring& url) {
-  htmlSAXParseFile(url.c_str(), NULL, sax, this);
+void Derp::Parser::parse_thread(const Derp::Request& request) {
+  request_ = request;
+  htmlSAXParseFile(request_.getUrl().c_str(), NULL, sax, this);
   signal_parsing_finished();
 }
 
 int Derp::Parser::request_downloads(Derp::Downloader& downloader, const Derp::Hasher& hasher, const Derp::Request& request) { 
 
-  m_images.remove_if([&hasher](Derp::Image img) { return hasher.is_downloaded(img); });
+  m_images.remove_if([&hasher](Derp::Image image) { return hasher.is_downloaded(image); });
 
-  m_images.remove_if([&request](Derp::Image img) { return !img.is_bigger(request.xDim, request.yDim); });
+  m_images.remove_if([&request](Derp::Image image) { return image < request; });
 
   downloader.download_async(m_images, request);
   return m_images.size();

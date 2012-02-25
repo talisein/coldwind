@@ -1,6 +1,7 @@
 #include "manager.hxx"
 
-Derp::Manager::Manager() : is_working(false)
+Derp::Manager::Manager() : 
+  is_working(false)
 {
   m_parser.signal_parsing_finished.connect(sigc::mem_fun(*this, &Derp::Manager::parsing_finished));
   m_hasher.signal_hashing_finished.connect(sigc::mem_fun(*this, &Derp::Manager::hashing_finished));
@@ -13,8 +14,8 @@ bool Derp::Manager::download_async(const Derp::Request& data) {
     is_working = true;
     m_request = data;
     is_hashing = is_parsing = true;
-    m_parser.parse_async(m_request.thread_url);
-    m_hasher.hash_async(m_request.target_directory);
+    m_parser.parse_async(m_request);
+    m_hasher.hash_async(m_request);
     return true;
   } else {
     return false; 

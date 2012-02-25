@@ -8,12 +8,13 @@
 #include <glibmm/threadpool.h>
 #include <giomm/file.h>
 #include "image.hxx"
+#include "request.hxx"
 
 namespace Derp {
   class Hasher {
   public:
     Hasher();
-    void hash_async(const Glib::RefPtr<Gio::File>& dir);
+    void hash_async(const Derp::Request& request);
     Glib::Dispatcher signal_hashing_finished;
 
     bool is_downloaded(const Image& img) const;
@@ -22,6 +23,7 @@ namespace Derp {
     Hasher& operator=(const Hasher&); // Evil func
     Hasher(const Hasher&); // Evil func
 
+    void hash(const Derp::Request& request);
     void hash_directory(const Glib::RefPtr<Gio::File>& dir);
     void hash_file(const Glib::RefPtr<Gio::File>& file);
 

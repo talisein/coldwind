@@ -1,12 +1,6 @@
-  * Save by original filename [Easy] 
-      (The filename is already parsed and saved into Image.  All you
-    need to do is open glade, modify the UI so there's a checkbox
-    somewhere and hook it up in application.?xx, add a field to
-    Request, and modify Downloader's interface to accept requests
-    rather than just the directory pointer)
-
   * Lurker should use a std::set rather than std::list [Easy] (Just
-    make sure you test this)
+    make sure you test this. The hash should be based on just the
+    thread, not every element. [Easy+]
 
   * Record download statistics from curl (Time, Bytes), populate back
     to UI [Medium] [Mostly done]
@@ -28,11 +22,12 @@
   * The hasher shouldn't try to hash anything larger than 4chan's
     maximum image size [Easy]
 
-  * Create a thread subdirectory option. Maybe a board too. [Medium]
-
   * In Glib 3.32, use GResources. And it looks like GApplication will
     finally land. [Longterm]
 
   * Store a hash cache [Medium]
 
   * Accept options for number of hashing threads & curl connections [Easy]
+
+  * Don't lock the UI during download. There should be a creative use
+    of Glib::Mutex as an alternative to try_download() testing. [Medium]

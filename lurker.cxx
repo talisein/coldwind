@@ -49,17 +49,23 @@ void Derp::Lurker::iteration_next() {
 }
 
 void Derp::Lurker::iteration_finish(int num_downloaded, const Derp::Request&) {
-  iter->minutes -= 1;
+  iter->decrementMinutes();
   total_downloaded += num_downloaded;
 
   iter++;
   if (iter == m_list.end()) {
+    if ( total_downloaded > 0 ) {
+      std::cout << "Lurker downloaded " << total_downloaded << " images total\n";
+    }
 
-    std::cout << "Lurker downloaded " << total_downloaded << " images total\n";
-    std::cout << "There were " << m_list.size() << " threads being monitored, now only ";
+    int before = m_list.size();
+    m_list.remove_if([](const Request& data) { return data.isExpired(); });
+    int after = m_list.size();
 
-    m_list.remove_if([](Request data) { return data.minutes <= 0; });
-    std::cout << m_list.size() << " remain." << std::endl;
+    if (before != after) {
+      std::cout << "There were " << before << " threads being monitored, now only " 
+		<< after << " remain." << std::endl;
+    }
 
     m_list_lock.unlock();
   } else {

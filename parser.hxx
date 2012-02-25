@@ -18,7 +18,7 @@ namespace Derp {
     Parser();
     ~Parser();
 
-    void parse_async(const Glib::ustring& url);
+    void parse_async(const Derp::Request& request);
     int request_downloads(Derp::Downloader&, const Derp::Hasher&, const Derp::Request&);
     Glib::Dispatcher signal_parsing_finished;
 
@@ -30,9 +30,10 @@ namespace Derp {
     Glib::ustring curSourceUrl, curOrigFilename;
     int curxDim, curyDim;
     std::list<Derp::Image> m_images;
+    Derp::Request request_;
 
     htmlSAXHandlerPtr sax;
-    void parse_thread(const Glib::ustring& url);
+    void parse_thread(const Derp::Request& request);
     void on_start_element(Glib::ustring name, std::map<Glib::ustring, Glib::ustring> attr_map);
     void on_characters(const Glib::ustring&);
 

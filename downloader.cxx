@@ -320,13 +320,20 @@ size_t Derp::write_cb(void *ptr, size_t size, size_t nmemb, void *userdata)
 
 bool Derp::Downloader::curl_setup(CURL* curl, const Derp::Image& img) {
   const Glib::ustring url(img.getUrl());
-  const Glib::ustring filename(url.substr(url.find_last_of("/")+1));
+  const std::string filename(img.getFilename());
   const std::string filepath(Glib::build_filename(m_target_dir->get_path(), filename));
 
   Glib::RefPtr<Gio::FileOutputStream> p_fos;
   CURLcode code;
 
   try {
+    if (!m_target_dir->query_exists()) {
+      if (!m_target_dir->make_directory_with_parents()) {
+	std::cerr << "Unable to create target directory." << std::endl;
+	goto on_file_failure;
+      }
+    }
+
     Glib::RefPtr<Gio::File> p_file = Gio::File::create_for_path(filepath);
     p_fos = p_file->create_file();
   } catch (Gio::Error e) {
@@ -335,8 +342,7 @@ bool Derp::Downloader::curl_setup(CURL* curl, const Derp::Image& img) {
       std::cerr << "Warning: File " << filepath << " already exists. Skipping." << std::endl;
       //std::cerr << "This means the file already existing does not match the MD5 hash of what's on 4chan. If Coldwind is the only program saving to this directory, then it's downloads are corrupted somehow. Complain on /g/ or something." << std::endl;
       std::cerr << "If this is a transient error (i.e. it goes away on its own the next time you hit the download button), there is no real problem. The files aren't being flushed timely, or something..." << std::endl;
-      signal_download_error();
-      return false;
+      goto on_file_failure;
       break;
     default:
       std::cerr << "Error creating file " << filepath << ": " << e.what() << std::endl;
@@ -401,7 +407,7 @@ void Derp::Downloader::download_imgs_multi() {
 
 void Derp::Downloader::download_async(const std::list<Derp::Image>& imgs, const Derp::Request& request) {
   m_imgs = imgs;
-  m_target_dir = request.target_directory;
+  m_target_dir = request.getDirectory();
   m_timer.reset();
   m_timer.start();
   m_total_bytes = 0;
@@ -409,6 +415,7 @@ void Derp::Downloader::download_async(const std::list<Derp::Image>& imgs, const 
   m_threadPool.push( sigc::mem_fun(*this, &Derp::Downloader::download_imgs_multi) );
 }
 
+/*
 void Derp::Downloader::download_async_easy(const std::list<Derp::Image>& imgs, const Derp::Request& request) {
   m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Derp::Downloader::download_imgs), imgs, request));
 }
@@ -460,3 +467,4 @@ void Derp::Downloader::download_url(const Glib::ustring& url, const Derp::Reques
 
   signal_download_finished();
 }
+*/
