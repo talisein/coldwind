@@ -49,6 +49,7 @@ namespace Derp {
     std::map<CURL*, Glib::RefPtr<Gio::FileOutputStream>> m_fos_map;
     std::list<Derp::Image> m_imgs;
     Glib::RefPtr<Gio::File> m_target_dir;
+    Derp::Request request_;
     double m_total_bytes;
     Glib::Timer m_timer;
 

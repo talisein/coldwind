@@ -335,6 +335,17 @@ bool Derp::Downloader::curl_setup(CURL* curl, const Derp::Image& img) {
     }
 
     Glib::RefPtr<Gio::File> p_file = Gio::File::create_for_path(filepath);
+    for ( int i = 1; i < 999; i++ ) {
+      if(request_.useOriginalFilename() && p_file->query_exists()) {
+	std::string ext(filename.substr(filename.find_last_of(".")));
+	std::string name(filename.substr(0, filename.find_last_of(".")));
+	std::stringstream st;
+	st << name << " (" << i << ")" << ext;
+	p_file = Gio::File::create_for_path(Glib::build_filename(m_target_dir->get_path(), st.str()));
+      } else {
+	break;
+      }
+    }
     p_fos = p_file->create_file();
   } catch (Gio::Error e) {
     switch (e.code()) {
@@ -406,6 +417,7 @@ void Derp::Downloader::download_imgs_multi() {
 }
 
 void Derp::Downloader::download_async(const std::list<Derp::Image>& imgs, const Derp::Request& request) {
+  request_ = request;
   m_imgs = imgs;
   m_target_dir = request.getDirectory();
   m_timer.reset();
