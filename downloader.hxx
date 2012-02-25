@@ -3,6 +3,7 @@
 
 #include <queue>
 #include <list>
+#include <set>
 #include <curl/curl.h>
 #include <giomm/file.h>
 #include <glibmm/ustring.h>
@@ -53,13 +54,18 @@ namespace Derp {
     double m_total_bytes;
     Glib::Timer m_timer;
 
+    std::set<curl_socket_t> active_sockets_;
+    std::list<Socket_Info*> socket_info_cache_;
+    std::set<Socket_Info*> active_socket_infos_;
+    std::list<Socket_Info*> bad_socket_infos_;
+
     void ASSERT_LOCK(std::string func) const;
     void collect_statistics(CURL* curl);
     bool curl_setup(CURL* curl, const Derp::Image& img);
     void curl_check_info();
     void curl_addsock(curl_socket_t s, CURL *easy, int action);
     void curl_setsock(Socket_Info* info, curl_socket_t s, CURL* curl, int action);
-    void curl_remsock(Derp::Socket_Info* info);
+    void curl_remsock(Derp::Socket_Info* info, curl_socket_t s);
     bool curl_timeout_expired_cb();
     void curl_timeout_expired();
     bool curl_event_cb(Glib::IOCondition condition, curl_socket_t s);

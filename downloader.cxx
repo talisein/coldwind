@@ -57,6 +57,8 @@ Derp::Downloader::~Downloader() {
     curl_easy_cleanup( m_curl_queue.front() );
     m_curl_queue.pop();
   }
+
+  // TODO: Cleanup our socket_info_cache_, etc.
 }
 
 /*
@@ -73,7 +75,7 @@ int Derp::curl_socket_cb(CURL *easy, /* easy handle */
   downloader->ASSERT_LOCK("curl_socket_cb");
 
   if (action == CURL_POLL_REMOVE) {
-    downloader->curl_remsock(info);
+    downloader->curl_remsock(info, s);
   } else {
     if (!info) {
       downloader->curl_addsock(s, easy, action);
@@ -109,15 +111,20 @@ void Derp::Downloader::collect_statistics(CURL* curl) {
   code = curl_easy_getinfo(curl, CURLINFO_STARTTRANSFER_TIME, &starttransfer);
   curl_statistics_check_code(code);
 
-  std::cout << std::setw(6) << std::setprecision(5) << size / 1000.0 << " kB in " << std::setw(6) << std::setprecision(3) << total << " s. [" << std::setw(6) << std::setprecision(5) << speed/1000.0 << " kB/s] {Establishing: " << std::setw(6) << std::setprecision(3) << starttransfer << " s} -" << connects << " new conns, " << redirects << " redirects-" << " (Total: ";
+  std::cout << std::setw(6) << std::setprecision(5) << size / 1000.0 << " kB in " << std::setw(6) << std::setprecision(3) << total << " s [" << std::setw(6) << std::setprecision(5) << speed/1000.0 << " kB/s] {Estbl: " << std::setw(6) << std::setprecision(3) << starttransfer << " s} " << connects << "nc " << redirects << " rd (Total: ";
   
   if (m_total_bytes > 1000 * 1000) 
     std::cout << std::setw(6) << std::setprecision(4) << m_total_bytes / 1000000.0 << " MB";
   else 
     std::cout << std::setw(6) << std::setprecision(4) << m_total_bytes / 1000.0 << " kB";
 
-  std::cout << ", Total Average Speed: " << std::setw(8) << std::setprecision(7) << (m_total_bytes / 1000.0) / m_timer.elapsed() << " kB/s)" << std::endl;
+  std::cout << ", Ttl Avg Spd: " << std::setw(8) << std::setprecision(7) << (m_total_bytes / 1000.0) / m_timer.elapsed() << " kB/s)";
 
+  std::cout << " AS: " << active_sockets_.size();
+  std::cout << " SIC: " << socket_info_cache_.size();
+  std::cout << " ASI: " << active_socket_infos_.size();
+  std::cout << " BSI: " << bad_socket_infos_.size();
+  std::cout << std::endl;
 }
 
 void Derp::Downloader::curl_check_info() {
@@ -276,8 +283,25 @@ void Derp::Downloader::curl_setsock(Socket_Info* info, curl_socket_t s, CURL*, i
 }
 
 void Derp::Downloader::curl_addsock(curl_socket_t s, CURL *easy, int action) {
-  Socket_Info* info = new Socket_Info;
   ASSERT_LOCK("curl_addsock");
+
+  auto pair_s = active_sockets_.insert(s);
+  if ( ! pair_s.second ) { // pair.second is false when element already in
+    std::cerr << "Error: curl_addsock got called twice for the same socket. I don't know what to do!" << std::endl;
+  }
+
+  Socket_Info* info;
+  if (socket_info_cache_.size() == 0) {
+    info = new Socket_Info;
+  } else {
+    info = socket_info_cache_.front();
+    socket_info_cache_.pop_front();
+  }
+
+  auto pair_si = active_socket_infos_.insert(info);
+  if ( ! pair_si.second ) {
+    std::cerr << "Error: Somehow the info we are assigning is already active!" << std::endl;
+  }
 
   #if COLDWIND_WINDOWS
   info->channel = Glib::IOChannel::create_from_win32_socket(s);
@@ -288,14 +312,28 @@ void Derp::Downloader::curl_addsock(curl_socket_t s, CURL *easy, int action) {
   curl_multi_assign(m_curlm, s, info);
 }
 
-void Derp::Downloader::curl_remsock(Socket_Info* info) {
+void Derp::Downloader::curl_remsock(Socket_Info* info, curl_socket_t s) {
   ASSERT_LOCK("curl_remsock");
+
   if (!info)
     return;
-  // We SHOULD NOT call info->channel->close(). This closes curl's
-  // cached connection to the server.
-  info->connection.disconnect();
-  delete info;
+  if (active_sockets_.count(s) > 0) {
+    if (active_socket_infos_.count(info) > 0) {
+      // We SHOULD NOT call info->channel->close(). This closes curl's
+      // cached connection to the server.
+      info->connection.disconnect();
+      info->channel.reset();
+      socket_info_cache_.push_front(info);
+      active_socket_infos_.erase(info);
+      active_sockets_.erase(s);
+    } else {
+      std::cerr << "Warning: curl_remsock called on info " << info << " socket " << s << ",  but that info is not active!" << std::endl;
+      bad_socket_infos_.push_front(info);
+      // TODO: Figure out what to do with these bad boys.
+    }
+  } else {
+    std::cerr << "Warning: curl_remsock was called twice for the same socket. This should be safe to ignore." << std::endl;
+  }
 }
 
 /* 
