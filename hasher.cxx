@@ -17,16 +17,18 @@ void Derp::Hasher::hash(const Derp::Request& request) {
   Glib::RefPtr<Gio::File> base = request.getHashDirectory();
   m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Hasher::hash_directory), base));
 
-  auto thread_dir = base->get_child(Glib::filename_from_utf8(request.getThread()));
-  if (thread_dir->query_exists()) {
-    m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Hasher::hash_directory), thread_dir) );
+  auto enumerator = base->enumerate_children();
+  for ( auto info = enumerator->next_file(); info != 0; info = enumerator->next_file()) {
+      if ( info->get_file_type() == Gio::FileType::FILE_TYPE_DIRECTORY ) {
+	m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Hasher::hash_directory),
+				      base->get_child(info->get_name())));
+      }
   }
 
   auto board_dir = base->get_child(Glib::filename_from_utf8(request.getBoard()));
   if (board_dir->query_exists()) {
-    m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Hasher::hash_directory), board_dir) );
-    auto enumerator = board_dir->enumerate_children();
-    for ( auto info = enumerator->next_file(); info != 0; info = enumerator->next_file()) {
+    auto board_enumerator = board_dir->enumerate_children();
+    for ( auto info = board_enumerator->next_file(); info != 0; info = board_enumerator->next_file()) {
       if ( info->get_file_type() == Gio::FileType::FILE_TYPE_DIRECTORY ) {
 	m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Hasher::hash_directory),
 				      board_dir->get_child(info->get_name())));
