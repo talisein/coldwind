@@ -36,6 +36,7 @@ void Derp::Manager::hashing_finished() {
 void Derp::Manager::thread_404() {
   is_working = false;
   signal_download_error(Derp::Error::THREAD_404);
+  // TODO: Need to manage state better
 }
 
 void Derp::Manager::try_download() {

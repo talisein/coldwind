@@ -10,7 +10,7 @@ Derp::Hasher::Hasher() : m_threadPool(8) {
 }
 
 void Derp::Hasher::hash_async(const Derp::Request& request) {
-  m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Hasher::hash), request) );
+  Glib::Thread::create( sigc::bind(sigc::mem_fun(*this, &Hasher::hash), request), false);
 }
 
 void Derp::Hasher::hash(const Derp::Request& request) {
@@ -25,6 +25,8 @@ void Derp::Hasher::hash(const Derp::Request& request) {
       }
   }
 
+  enumerator->close();
+
   auto board_dir = base->get_child(Glib::filename_from_utf8(request.getBoard()));
   if (board_dir->query_exists()) {
     auto board_enumerator = board_dir->enumerate_children();
@@ -34,7 +36,13 @@ void Derp::Hasher::hash(const Derp::Request& request) {
 				      board_dir->get_child(info->get_name())));
       }
     }
+    board_enumerator->close();
   }
+
+  while( m_threadPool.unprocessed() > 0 ) {
+    Glib::Thread::yield();
+  }
+  signal_hashing_finished();
 }
 
 void Derp::Hasher::hash_directory(const Glib::RefPtr<Gio::File>& dir) {
@@ -52,11 +60,6 @@ void Derp::Hasher::hash_directory(const Glib::RefPtr<Gio::File>& dir) {
     }
   }
   enumerator->close();
-  
-  while( m_threadPool.unprocessed() > 0 ) {
-    Glib::Thread::yield();
-  }
-  signal_hashing_finished();
 }
 
 void Derp::Hasher::hash_file(const Glib::RefPtr<Gio::File>& file) {
