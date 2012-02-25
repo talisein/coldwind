@@ -45,7 +45,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 cmake_policy(SET CMP0011 NEW)
 
-set(CMAKE_BUILD_TYPE debug)
+set(CMAKE_BUILD_TYPE release)
 set(CMAKE_CXX_FLAGS "-std=c++0x")
 set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -O0 -Wall -Wextra -pedantic" )
 set(CMAKE_CXX_FLAGS_RELEASE "-Os")

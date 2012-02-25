@@ -24,6 +24,7 @@ void Derp::Hasher::hash(const Derp::Request& request) {
 
   auto board_dir = base->get_child(Glib::filename_from_utf8(request.getBoard()));
   if (board_dir->query_exists()) {
+    m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Hasher::hash_directory), board_dir) );
     auto enumerator = board_dir->enumerate_children();
     for ( auto info = enumerator->next_file(); info != 0; info = enumerator->next_file()) {
       if ( info->get_file_type() == Gio::FileType::FILE_TYPE_DIRECTORY ) {
