@@ -4,14 +4,53 @@
 #include "parser.hxx"
 #include "utils.hxx"
 
-Derp::Parser::Parser() {
-  sax = (htmlSAXHandlerPtr) calloc(1, sizeof(htmlSAXHandler));
+Derp::Parser::Parser() : parser_error_(false) {
+  sax = (htmlSAXHandlerPtr) calloc(1, sizeof(xmlSAXHandler));
   sax->startElement = &startElement;
   sax->characters = &onCharacters;
+  sax->serror = &on_xmlError;
+  sax->initialized = XML_SAX2_MAGIC;
+  ctxt = xmlCreatePushParserCtxt(sax, this, NULL, 0, NULL);
 }
 
 Derp::Parser::~Parser() {
   free(sax);
+}
+
+void Derp::on_xmlError(void* user_data, xmlErrorPtr error) {
+  Derp::Parser* parser = (Derp::Parser*) user_data;
+  switch (error->domain) {
+  case XML_FROM_IO:
+    switch (error->code) {
+    case XML_IO_LOAD_ERROR:
+      parser->parser_error_ = true;
+      parser->signal_thread_404();
+      break;
+    default:
+      std::cerr << "Error: Got libxml2 IO error code " << error->code << std::endl;
+    }
+    break;
+  case XML_FROM_HTML:
+    // Ignore
+    break;
+  default:
+    std::cerr << "Error: Got unexpected libxml2 error code " << error->code << " from domain " << error->domain << " which means: " << error->message << std::endl;
+    std::cerr << "\tPlease report this error to the developer." << std::endl;
+    parser->parser_error_ = true;
+    break;
+  }
+}
+
+/* Uses libxml to fetch the 4ch thread from the network. Parsing
+   happens in the SAX methods.
+ */
+void Derp::Parser::parse_thread(const Derp::Request& request) {
+  request_ = request;
+  parser_error_ = false;
+  htmlCtxtReadFile(ctxt, request_.getUrl().c_str(), NULL, HTML_PARSE_RECOVER);
+
+  if (!parser_error_)
+    signal_parsing_finished();
 }
 
 void Derp::startElement(void* user_data, const xmlChar* name, const xmlChar** attrs) {
@@ -105,15 +144,6 @@ void Derp::Parser::on_start_element(Glib::ustring name, std::map<Glib::ustring, 
     curSourceUrl = "";
 
   }
-}
-
-/* Uses libxml to fetch the 4ch thread from the network. Parsing
-   happens in the SAX methods.
- */
-void Derp::Parser::parse_thread(const Derp::Request& request) {
-  request_ = request;
-  htmlSAXParseFile(request_.getUrl().c_str(), NULL, sax, this);
-  signal_parsing_finished();
 }
 
 int Derp::Parser::request_downloads(Derp::Downloader& downloader, const Derp::Hasher& hasher, const Derp::Request& request) { 

@@ -25,6 +25,7 @@ Derp::Application::Application(int argc, char*argv[]) :
     refBuilder->get_widget("boardDirCheckbox", m_boardDirCheckbox);
     refBuilder->get_widget("threadDirCheckbox", m_threadDirCheckbox);
     refBuilder->get_widget("originalFilenameCheckbox", m_originalFilenameCheckbox);
+    refBuilder->get_widget("lurk404Checkbox", m_lurk404Checkbox);
 
     m_lurkAdjustment = Glib::RefPtr<Gtk::Adjustment>::cast_static(refBuilder->get_object("lurkAdjustment"));
     m_xAdjustment = Glib::RefPtr<Gtk::Adjustment>::cast_static(refBuilder->get_object("xAdjustment"));
@@ -66,6 +67,7 @@ void Derp::Application::signal_go() {
     // Start downloads and lurk.
     m_timer.reset();
     m_timer.start();
+    num_download_errors = 0;
     bool is_accepted = m_manager.download_async({ m_urlEntry->get_text(),
 	  m_fileChooserButton->get_file(),
 	  static_cast<int>(m_lurkAdjustment->get_value()),
@@ -73,7 +75,8 @@ void Derp::Application::signal_go() {
 	  static_cast<int>(m_yAdjustment->get_value()),
 	  m_boardDirCheckbox->get_active(),
 	  m_threadDirCheckbox->get_active(),
-	  m_originalFilenameCheckbox->get_active()
+	  m_originalFilenameCheckbox->get_active(),
+	  m_lurk404Checkbox->get_active()
 	  });
     if (is_accepted) {
       m_goButton->set_sensitive(false);
@@ -84,7 +87,6 @@ void Derp::Application::signal_go() {
 void Derp::Application::starting_downloads(int num) {
   if (num > 0) {
     num_downloaded = 0;
-    num_download_errors = 0;
     num_downloading = num;
     m_image->set(m_killmegif);
     update_progressBar();
@@ -93,10 +95,22 @@ void Derp::Application::starting_downloads(int num) {
   }
 }
 
-void Derp::Application::download_error() {
-  num_download_errors++;
-  m_image->set(m_errorgif);
-  update_progressBar();
+void Derp::Application::download_error(const Derp::Error& error) {
+  switch (error) {
+  case THREAD_404:
+    m_image->set(m_errorgif);
+    m_progressBar->set_text("Thread has 404ed");
+    m_progressBar->set_show_text(true);
+    m_progressBar->set_fraction(1.0);
+    num_download_errors++;
+    m_timer.stop();
+    m_goButton->set_sensitive(true);
+    break;
+  default:
+    num_download_errors++;
+    m_image->set(m_errorgif);
+    update_progressBar();
+  }
 }
 
 void Derp::Application::download_finished() {
@@ -115,6 +129,7 @@ void Derp::Application::downloads_finished(int, const Request& request) {
   if (!request.isExpired()) {
     m_lurker.add_async(request);
   }
+  update_progressBar();
 }
 
 void Derp::Application::update_progressBar() {

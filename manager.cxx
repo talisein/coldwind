@@ -4,6 +4,7 @@ Derp::Manager::Manager() :
   is_working(false)
 {
   m_parser.signal_parsing_finished.connect(sigc::mem_fun(*this, &Derp::Manager::parsing_finished));
+  m_parser.signal_thread_404.connect(sigc::mem_fun(*this, &Derp::Manager::thread_404));
   m_hasher.signal_hashing_finished.connect(sigc::mem_fun(*this, &Derp::Manager::hashing_finished));
   m_downloader.signal_download_finished.connect(sigc::mem_fun(*this, &Derp::Manager::download_finished));
   m_downloader.signal_download_error.connect(sigc::mem_fun(*this, &Derp::Manager::download_error));
@@ -32,6 +33,11 @@ void Derp::Manager::hashing_finished() {
   try_download();
 }
 
+void Derp::Manager::thread_404() {
+  is_working = false;
+  signal_download_error(Derp::Error::THREAD_404);
+}
+
 void Derp::Manager::try_download() {
   if ( !(is_parsing || is_hashing) ) {
     num_errors = 0;
@@ -55,7 +61,7 @@ void Derp::Manager::download_finished() {
 
 void Derp::Manager::download_error() {
   num_errors++;
-  signal_download_error();
+  signal_download_error(Derp::Error::ERROR);
   if (num_downloading == (num_downloaded + num_errors)) {
     done();
   }

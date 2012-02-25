@@ -27,7 +27,7 @@ namespace Derp {
     void download_finished();
     void downloads_finished(int num, const Request& request);
     void starting_downloads(int num);
-    void download_error();
+    void download_error(const Derp::Error&);
     void update_progressBar();
 
     int num_downloading;
@@ -50,6 +50,7 @@ namespace Derp {
     Gtk::CheckButton* m_boardDirCheckbox;
     Gtk::CheckButton* m_threadDirCheckbox;
     Gtk::CheckButton* m_originalFilenameCheckbox;
+    Gtk::CheckButton* m_lurk404Checkbox;
     Glib::RefPtr<Gdk::PixbufAnimation> m_killmegif;
     Glib::RefPtr<Gdk::PixbufAnimation> m_errorgif;
     Glib::RefPtr<Gdk::Pixbuf> m_fangpng;

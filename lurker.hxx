@@ -16,6 +16,8 @@ namespace Derp {
     Lurker(const Lurker&); // evil func
     const Lurker& operator=(const Lurker&); // evil func
 
+    void download_error(const Derp::Error&);
+
     void add(const Derp::Request&);
     Glib::Mutex m_list_lock;
     std::list<Derp::Request> m_list;

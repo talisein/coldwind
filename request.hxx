@@ -16,7 +16,8 @@ namespace Derp {
 	    const int& yDim,
 	    const bool& useBoardSubdir,
 	    const bool& useThreadSubdir,
-	    const bool& useOriginalFilename);
+	    const bool& useOriginalFilename,
+	    const bool& lurk404);
     Request();
 
     Glib::RefPtr<Gio::File> getDirectory() const;
@@ -38,6 +39,7 @@ namespace Derp {
     bool useBoardSubdir_;
     bool useThreadSubdir_;
     bool useOriginalFilename_;
+    bool lurkTo404_;
 
     friend bool operator<(const Derp::Image& image, 
 			  const Derp::Request& request);

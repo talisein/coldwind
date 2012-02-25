@@ -8,7 +8,8 @@ Derp::Request::Request(const Glib::ustring& thread_url,
 		       const int& yDim,
 		       const bool& useBoardSubdir,
 		       const bool& useThreadSubdir,
-		       const bool& useOriginalFilename) :
+		       const bool& useOriginalFilename,
+		       const bool& lurkTo404) :
   thread_url_(thread_url),
   target_directory_(target_directory),
   minutes_(minutes),
@@ -16,7 +17,8 @@ Derp::Request::Request(const Glib::ustring& thread_url,
   yDim_(yDim),
   useBoardSubdir_(useBoardSubdir),
   useThreadSubdir_(useThreadSubdir),
-  useOriginalFilename_(useOriginalFilename)
+  useOriginalFilename_(useOriginalFilename),
+  lurkTo404_(lurkTo404)
 {
 }
 
@@ -28,7 +30,10 @@ void Derp::Request::decrementMinutes() {
 }
 
 bool Derp::Request::isExpired() const {
-  return minutes_ <= 0;
+  if ( !lurkTo404_)
+    return minutes_ <= 0;
+  else
+    return false;
 }
 
 Glib::RefPtr<Gio::File> Derp::Request::getHashDirectory() const {
