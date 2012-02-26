@@ -54,10 +54,10 @@ namespace Derp {
     double m_total_bytes;
     Glib::Timer m_timer;
 
-    std::set<curl_socket_t> active_sockets_;
-    std::list<Socket_Info*> socket_info_cache_;
-    std::set<Socket_Info*> active_socket_infos_;
-    std::list<Socket_Info*> bad_socket_infos_;
+    std::list<curl_socket_t> active_sockets_;
+    std::vector<Socket_Info*> socket_info_cache_;
+    std::list<Socket_Info*> active_socket_infos_;
+    std::vector<Socket_Info*> bad_socket_infos_;
 
     void ASSERT_LOCK(std::string func) const;
     void collect_statistics(CURL* curl);

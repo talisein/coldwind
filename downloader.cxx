@@ -5,7 +5,9 @@
 #include "config.h"
 
 Derp::Downloader::Downloader() : m_threadPool(4), 
-				 m_curlm(curl_multi_init())
+				 m_curlm(curl_multi_init()),
+				 socket_info_cache_(0),
+				 bad_socket_infos_(0)
 {
   if (!m_curlm) {
     std::cerr << "Error: Could not initialize the curl multi interface" << std::endl;
@@ -135,6 +137,7 @@ void Derp::Downloader::curl_check_info() {
   CURLMsg* msg;
   std::list<Derp::Image>::iterator iter;
   bool setup_ok;
+  bool download_error = false;
 
   ASSERT_LOCK("curl_check_info");
   do {
@@ -146,6 +149,7 @@ void Derp::Downloader::curl_check_info() {
 	code = msg->data.result;
 	if (code != CURLE_OK) {
 	  std::cerr << "Error: Image download finished with error: " << curl_easy_strerror(code) << std::endl;
+	  download_error = true;
 	}
 
 	if (m_fos_map.count(curl) != 1) {
@@ -166,7 +170,11 @@ void Derp::Downloader::curl_check_info() {
 	if (mcode != CURLM_OK) {
 	  std::cerr << "Error: While removing curl handle from multi: " << curl_multi_strerror(mcode) << std::endl;
 	}
-	signal_download_finished();
+
+	if (!download_error)
+	  signal_download_finished();
+	else
+	  signal_download_error();
 
 	iter = m_imgs.begin();
 	if (iter != m_imgs.end()) {
@@ -285,24 +293,26 @@ void Derp::Downloader::curl_setsock(Socket_Info* info, curl_socket_t s, CURL*, i
 void Derp::Downloader::curl_addsock(curl_socket_t s, CURL *easy, int action) {
   ASSERT_LOCK("curl_addsock");
 
-  auto pair_s = active_sockets_.insert(s);
-  if ( ! pair_s.second ) { // pair.second is false when element already in
+  if( std::count(active_sockets_.begin(), active_sockets_.end(), s) == 0 ) {
+    active_sockets_.push_back(s);
+  } else {
     std::cerr << "Error: curl_addsock got called twice for the same socket. I don't know what to do!" << std::endl;
   }
-
+  
   Socket_Info* info;
-  if (socket_info_cache_.size() == 0) {
-    info = new Socket_Info;
+  if (socket_info_cache_.empty()) {
+    info = new Socket_Info();
   } else {
-    info = socket_info_cache_.front();
-    socket_info_cache_.pop_front();
+    info = socket_info_cache_.back();
+    socket_info_cache_.pop_back();
   }
-
-  auto pair_si = active_socket_infos_.insert(info);
-  if ( ! pair_si.second ) {
+  
+  if ( std::count(active_socket_infos_.begin(), active_socket_infos_.end(), info) == 0 ) {
+    active_socket_infos_.push_back(info);
+  } else {
     std::cerr << "Error: Somehow the info we are assigning is already active!" << std::endl;
   }
-
+    
   #if COLDWIND_WINDOWS
   info->channel = Glib::IOChannel::create_from_win32_socket(s);
   #else
@@ -317,18 +327,18 @@ void Derp::Downloader::curl_remsock(Socket_Info* info, curl_socket_t s) {
 
   if (!info)
     return;
-  if (active_sockets_.count(s) > 0) {
-    if (active_socket_infos_.count(info) > 0) {
+  if ( std::count(active_sockets_.begin(), active_sockets_.end(), s) > 0) {
+    if ( std::count(active_socket_infos_.begin(), active_socket_infos_.end(), info) > 0) {
       // We SHOULD NOT call info->channel->close(). This closes curl's
       // cached connection to the server.
       info->connection.disconnect();
       info->channel.reset();
-      socket_info_cache_.push_front(info);
-      active_socket_infos_.erase(info);
-      active_sockets_.erase(s);
+      socket_info_cache_.push_back(info);
+      active_socket_infos_.remove(info); 
+      active_sockets_.remove(s);
     } else {
       std::cerr << "Warning: curl_remsock called on info " << info << " socket " << s << ",  but that info is not active!" << std::endl;
-      bad_socket_infos_.push_front(info);
+      bad_socket_infos_.push_back(info);
       // TODO: Figure out what to do with these bad boys.
     }
   } else {
@@ -373,18 +383,25 @@ bool Derp::Downloader::curl_setup(CURL* curl, const Derp::Image& img) {
     }
 
     Glib::RefPtr<Gio::File> p_file = Gio::File::create_for_path(filepath);
-    for ( int i = 1; i < 999; i++ ) {
-      if(request_.useOriginalFilename() && p_file->query_exists()) {
-	std::string ext(filename.substr(filename.find_last_of(".")));
-	std::string name(filename.substr(0, filename.find_last_of(".")));
-	std::stringstream st;
-	st << name << " (" << i << ")" << ext;
-	p_file = Gio::File::create_for_path(Glib::build_filename(m_target_dir->get_path(), st.str()));
-      } else {
-	break;
+    if ( p_file->query_exists() ) {
+      auto info = p_file->query_info();
+      if ( info->get_size() != 0 ) {
+	for ( int i = 1; i < 999; i++ ) {
+	  if(request_.useOriginalFilename() && p_file->query_exists()) {
+	    std::string ext(filename.substr(filename.find_last_of(".")));
+	    std::string name(filename.substr(0, filename.find_last_of(".")));
+	    std::stringstream st;
+	    st << name << " (" << i << ")" << ext;
+	    p_file = Gio::File::create_for_path(Glib::build_filename(m_target_dir->get_path(), st.str()));
+	  } else {
+	    break;
+	  }
+	} // for
+	p_fos = p_file->create_file();
+      } else { // File exists, but is 0 size. Replace it.
+	p_fos = p_file->replace();
       }
     }
-    p_fos = p_file->create_file();
   } catch (Gio::Error e) {
     switch (e.code()) {
     case Gio::Error::Code::EXISTS:
@@ -416,6 +433,13 @@ bool Derp::Downloader::curl_setup(CURL* curl, const Derp::Image& img) {
     std::cerr << "Error: While setting curl write data: " << curl_easy_strerror(code) << std::endl; 
     goto on_setup_failure;
   }
+
+  code = curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+  if (code != CURLE_OK) {
+    std::cerr << "Error: While setting curl to fail on error: " << curl_easy_strerror(code) << std::endl; 
+    goto on_setup_failure;
+  }
+  
 
   m_fos_map.insert({curl, p_fos});
   return true;
