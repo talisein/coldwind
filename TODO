@@ -36,9 +36,9 @@
   * set_sensitivity(false) on the spinner when lurk-to-404 [Easy]
 
   * In the parser, use libcurl instead of libxml2 to fetch the HTML [Hard]
-  ** Only the lurker uses this functionality
   ** Use CURLOPT_TIMECONDITION = CURL_TIMECOND_IFMODSINCE and
      CURLOPT_TIMEVALUE = long unix timestamp
+  *** Only the lurker uses this functionality
   ** The HTML parsing can probably be done in CURLOPT_WRITEFUNCTION
   ** Might as well cache the connection
   ** Rewrite the 404 logic
