@@ -401,6 +401,8 @@ bool Derp::Downloader::curl_setup(CURL* curl, const Derp::Image& img) {
       } else { // File exists, but is 0 size. Replace it.
 	p_fos = p_file->replace();
       }
+    } else {
+      p_fos = p_file->create_file();
     }
   } catch (Gio::Error e) {
     switch (e.code()) {
@@ -468,11 +470,11 @@ void Derp::Downloader::download_imgs_multi() {
       } else {
 	m_code = curl_multi_add_handle(m_curlm, curl); 
 	if (m_code != CURLM_OK) {
-	  std::cerr << "Error: While adding curl handle to curl multi handle: " << curl_multi_strerror(m_code) << std::endl; 
+	  std::cerr << "Error: While adding curl handle to curl multi handle: " << curl_multi_strerror(m_code) << std::endl;
 	  curl_easy_reset(curl);
 	  m_curl_queue.push(curl);
 	}
-      } 
+      }
     }
     m_imgs.erase(it);
   }
