@@ -11,13 +11,11 @@
   * Redirect std::cout and std::cerr to an optional popup message log
     [Hard] (There's actually a Glib API for this in g_log)
 
-  * The parser should recognize 404s, and the Lurker should drop it
-    [Medium]
-
-  * Capture libxml errors and do the right thing. [Easy/Medium?]
+  * Capture libxml errors and do the right thing. [Easy] [Partly done]
 
   * Overlay some lurker info text on the image [Medium]
   ** Or some sort of visual lurker feedback. I dunno. [Hard]
+  *** Well, there's some std::cout things now. [Partly done]
 
   * The hasher shouldn't try to hash anything larger than 4chan's
     maximum image size [Easy]
@@ -25,9 +23,23 @@
   * In Glib 3.32, use GResources. And it looks like GApplication will
     finally land. [Longterm]
 
-  * Store a hash cache [Medium]
+  * Store the hash cache to disk [Medium]
 
   * Accept options for number of hashing threads & curl connections [Easy]
 
   * Don't lock the UI during download. There should be a creative use
     of Glib::Mutex as an alternative to try_download() testing. [Medium]
+
+  * Allow user to specify thread directory name [Easy]
+  ** Provide autocompletion [Medium+]
+
+  * set_sensitivity(false) on the spinner when lurk-to-404 [Easy]
+
+  * In the parser, use libcurl instead of libxml2 to fetch the HTML [Hard]
+  ** Only the lurker uses this functionality
+  ** Use CURLOPT_TIMECONDITION = CURL_TIMECOND_IFMODSINCE and
+     CURLOPT_TIMEVALUE = long unix timestamp
+  ** The HTML parsing can probably be done in CURLOPT_WRITEFUNCTION
+  ** Might as well cache the connection
+  ** Rewrite the 404 logic
+
