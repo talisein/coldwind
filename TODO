@@ -30,9 +30,6 @@
   * Don't lock the UI during download. There should be a creative use
     of Glib::Mutex as an alternative to try_download() testing. [Medium]
 
-  * Allow user to specify thread directory name [Easy]
-  ** Provide autocompletion [Medium+]
-
   * set_sensitivity(false) on the spinner when lurk-to-404 [Easy]
 
   * In the parser, use libcurl instead of libxml2 to fetch the HTML [Hard]
@@ -43,3 +40,9 @@
   ** Might as well cache the connection
   ** Rewrite the 404 logic
 
+  * Make sure that we ignore everything after # after the last / in
+    the thread url [Easy]
+
+  * Make a utility function to implement getBoard(), getThread(). Have
+    Request use that, and then application can use the utility
+    functions directly in update_thread_dir_completer [Easy]
