@@ -18,7 +18,7 @@ Derp::Parser::~Parser() {
 }
 
 void Derp::on_xmlError(void* user_data, xmlErrorPtr error) {
-  Derp::Parser* parser = (Derp::Parser*) user_data;
+  Derp::Parser* parser = static_cast<Derp::Parser*>(user_data);
   switch (error->domain) {
   case XML_FROM_IO:
     switch (error->code) {

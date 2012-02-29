@@ -34,8 +34,8 @@ namespace Derp {
     Glib::Dispatcher signal_download_error;
 
   private:
-    Downloader& operator=(const Downloader&); // Evil func
-    Downloader(const Downloader&); // Evil func
+    Downloader& operator=(const Downloader&) = delete; // Evil func
+    Downloader(const Downloader&) = delete; // Evil func
 
     void download_imgs(const std::list<Derp::Image>& imgs, const Derp::Request&);
     void download_url(const Glib::ustring& url, const Derp::Request&);
