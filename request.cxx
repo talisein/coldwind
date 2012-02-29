@@ -3,6 +3,7 @@
 
 Derp::Request::Request(const Glib::ustring& thread_url,
 		       const Glib::RefPtr<Gio::File>& target_directory,
+		       const Glib::ustring& thread_directory,
 		       const int& minutes,
 		       const int& xDim,
 		       const int& yDim,
@@ -12,6 +13,7 @@ Derp::Request::Request(const Glib::ustring& thread_url,
 		       const bool& lurkTo404) :
   thread_url_(thread_url),
   target_directory_(target_directory),
+  thread_directory_(thread_directory),
   minutes_(minutes),
   xDim_(xDim),
   yDim_(yDim),
@@ -49,7 +51,7 @@ Glib::RefPtr<Gio::File> Derp::Request::getDirectory() const {
   }
 
   if ( useThreadSubdir_ ) {
-    dir = dir->get_child(Glib::filename_from_utf8(getThread()));
+    dir = dir->get_child(Glib::filename_from_utf8(thread_directory_));
   }
 
   return dir;

@@ -1,8 +1,6 @@
 #include "application.hxx"
-#include <gtkmm.h>
 #include <iostream>
 #include <iomanip>
-#include <gdkmm/pixbufanimation.h>
 #include <queue>
 #include "config.h"
 
@@ -17,6 +15,7 @@ Derp::Application::Application(int argc, char*argv[]) :
 
     refBuilder->get_widget("mainWindow", m_window);
     refBuilder->get_widget("urlEntry", m_urlEntry);
+    refBuilder->get_widget("threadFolderEntry", m_threadFolderEntry);
     refBuilder->get_widget("goToggle", m_goButton);
     refBuilder->get_widget("progressBar", m_progressBar);
     refBuilder->get_widget("lurkSpinButton", m_lurkSpinButton);
@@ -26,10 +25,21 @@ Derp::Application::Application(int argc, char*argv[]) :
     refBuilder->get_widget("threadDirCheckbox", m_threadDirCheckbox);
     refBuilder->get_widget("originalFilenameCheckbox", m_originalFilenameCheckbox);
     refBuilder->get_widget("lurk404Checkbox", m_lurk404Checkbox);
+    refBuilder->get_widget("threadLabel", m_threadLabel);
 
     m_lurkAdjustment = Glib::RefPtr<Gtk::Adjustment>::cast_static(refBuilder->get_object("lurkAdjustment"));
     m_xAdjustment = Glib::RefPtr<Gtk::Adjustment>::cast_static(refBuilder->get_object("xAdjustment"));
     m_yAdjustment = Glib::RefPtr<Gtk::Adjustment>::cast_static(refBuilder->get_object("yAdjustment"));
+
+    m_threadListStore = Gtk::ListStore::create(Derp::ThreadDirColumns::getInstance());
+    m_entryCompletion = Gtk::EntryCompletion::create();
+    m_entryCompletion->set_model(m_threadListStore);
+    m_entryCompletion->set_text_column(Derp::ThreadDirColumns::getFilenameColumn());
+    m_entryCompletion->set_inline_completion(true);
+    m_entryCompletion->set_inline_selection(false);
+    m_entryCompletion->set_popup_completion(true);
+    m_threadFolderEntry->set_completion(m_entryCompletion);
+    on_thread_toggled(); // Show/Hide the entryCompletion based on xml
 
     m_killmegif = Gdk::PixbufAnimation::create_from_file(COLDWIND_KILLMEGIF_LOCATION);
     m_fangpng = Gdk::Pixbuf::create_from_file(COLDWIND_FANGPNG_LOCATION);
@@ -48,6 +58,10 @@ Derp::Application::Application(int argc, char*argv[]) :
   m_image->set(m_fangpng);
 
   m_goButton->signal_toggled().connect( sigc::mem_fun(*this, &Derp::Application::signal_go));
+  m_urlEntry->get_buffer()->signal_inserted_text().connect( sigc::mem_fun(*this, &Derp::Application::on_url_entry) );
+  m_boardDirCheckbox->signal_toggled().connect( sigc::mem_fun(*this, &Derp::Application::on_board_toggled) );
+  m_threadDirCheckbox->signal_toggled().connect( sigc::mem_fun(*this, &Derp::Application::on_thread_toggled) );
+  m_fileChooserButton->signal_file_set().connect( sigc::mem_fun(*this, &Derp::Application::on_board_toggled) );
   m_manager.signal_download_finished.connect(sigc::mem_fun(*this, &Derp::Application::download_finished));
   m_manager.signal_download_error.connect(sigc::mem_fun(*this, &Derp::Application::download_error));
   m_manager.signal_all_downloads_finished.connect(sigc::mem_fun(*this, &Derp::Application::downloads_finished));
@@ -60,6 +74,57 @@ void Derp::Application::run() {
   m_kit.run(*m_window);
 }
 
+void Derp::Application::on_thread_toggled() {
+  if ( m_threadDirCheckbox->get_active() ) {
+    m_threadFolderEntry->set_visible(true);
+    m_threadLabel->set_visible(true);
+    update_thread_dir_completer();
+  } else { 
+    m_threadLabel->set_visible(false);
+    m_threadFolderEntry->set_visible(false);
+  }
+}
+
+void Derp::Application::on_url_entry(guint, const gchar*, guint) {
+  update_thread_dir_completer();
+}
+
+void Derp::Application::update_thread_dir_finish(const Glib::RefPtr<Gio::AsyncResult>& result) {
+  Glib::RefPtr<Gio::File> file = Glib::RefPtr<Gio::File>::cast_dynamic(result->get_source_object_base());
+    
+  auto enumerator = file->enumerate_children_finish(result);
+  m_threadListStore->clear();
+  for ( auto info = enumerator->next_file(); info; info = enumerator->next_file() ) {
+    if (info->get_file_type() == Gio::FileType::FILE_TYPE_DIRECTORY) {
+      m_threadListStore->append()->set_value(Derp::ThreadDirColumns::getFilenameColumn(), Glib::ustring(info->get_display_name()));
+    }
+  }
+  enumerator->close();
+}
+
+void Derp::Application::update_thread_dir_completer() {
+  Glib::RefPtr<Gio::File> basedir = m_fileChooserButton->get_file();
+  Glib::RefPtr<Gio::File> dir;
+  const Request req = { m_urlEntry->get_text(), basedir, "", 0, 0, 0, true, true, true, false };
+  m_threadFolderEntry->set_text(req.getThread());
+  
+  // Delete all the current completions
+  m_threadListStore->clear();
+
+  if (m_boardDirCheckbox->get_active()) {
+    m_threadLabel->set_text(Glib::build_filename(" ",req.getBoard(), " "));
+    dir = basedir->get_child_for_display_name(req.getBoard());
+    if (! dir->query_exists() )
+      return;
+  } else {
+    m_threadLabel->set_text(Glib::build_filename(" ", " "));
+    dir = basedir;
+  }
+
+  dir->enumerate_children_async(sigc::mem_fun(*this, &Derp::Application::update_thread_dir_finish),
+				"standard::type,standard::display-name");
+}
+
 void Derp::Application::signal_go() {
   if (m_goButton->get_active()) {
     m_goButton->set_active(false);
@@ -70,6 +135,7 @@ void Derp::Application::signal_go() {
     num_download_errors = 0;
     bool is_accepted = m_manager.download_async({ m_urlEntry->get_text(),
 	  m_fileChooserButton->get_file(),
+	  m_threadFolderEntry->get_text(),
 	  static_cast<int>(m_lurkAdjustment->get_value()),
 	  static_cast<int>(m_xAdjustment->get_value()),
 	  static_cast<int>(m_yAdjustment->get_value()),

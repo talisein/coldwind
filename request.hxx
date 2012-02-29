@@ -11,6 +11,7 @@ namespace Derp {
   public:
     Request(const Glib::ustring& thread_url,
 	    const Glib::RefPtr<Gio::File>& target_directory,
+	    const Glib::ustring& thread_directory,
 	    const int& minutes,
 	    const int& xDim,
 	    const int& yDim,
@@ -33,6 +34,7 @@ namespace Derp {
   private:
     Glib::ustring thread_url_;
     Glib::RefPtr<Gio::File> target_directory_;
+    Glib::ustring thread_directory_;
     int minutes_;
     int xDim_;
     int yDim_;
