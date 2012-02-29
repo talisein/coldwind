@@ -3,6 +3,7 @@
 #include <glibmm/thread.h>
 #include "application.hxx"
 #include <curl/curl.h>
+#include <libxml/parser.h>
 #include <iostream>
 
 int main (int argc, char *argv[])
@@ -13,10 +14,18 @@ int main (int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
+  LIBXML_TEST_VERSION
+
   if(!Glib::thread_supported()) Glib::thread_init();
 
   Derp::Application app(argc, argv);
   app.run();
 
+  xmlCleanupParser();
+  if ( xmlMemUsed() > 0 ) {
+    std::cerr << "Warning: libxml2 is using " << xmlMemUsed() << " bytes of memory before exit." << std::endl;
+  }
+
+  curl_global_cleanup();
   return EXIT_SUCCESS;
 }
