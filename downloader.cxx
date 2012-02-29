@@ -50,17 +50,37 @@ Derp::Downloader::Downloader() : m_threadPool(4),
 }
 
 Derp::Downloader::~Downloader() {
-  CURLMcode code = curl_multi_cleanup( m_curlm );
-  if (code != CURLM_OK) {
-    std::cerr << "Error: While cleaning up curl: " << curl_multi_strerror(code) << std::endl;
-  }
+  Glib::Mutex::Lock lock(curl_mutex);
 
   while ( !m_curl_queue.empty() ) {
     curl_easy_cleanup( m_curl_queue.front() );
     m_curl_queue.pop();
   }
 
-  // TODO: Cleanup our socket_info_cache_, etc.
+  for ( auto iter = m_fos_map.begin(); iter != m_fos_map.end();) {
+    curl_multi_remove_handle( m_curlm, iter->first );
+    curl_easy_cleanup( iter->first );
+    iter->second->close();
+    m_fos_map.erase(iter++);
+  }
+
+  CURLMcode code = curl_multi_cleanup( m_curlm );
+  if (code != CURLM_OK) {
+    std::cerr << "Error: While cleaning up curlm: " << curl_multi_strerror(code) << std::endl;
+  }
+
+  for ( auto iter = m_file_map.begin(); iter != m_file_map.end();) {
+    Glib::ustring name = iter->second->get_parse_name();
+    iter->second->remove();
+    m_file_map.erase(iter++);
+    std::cerr << "Incomplete file " << name << " deleted." << std::endl;
+  }
+
+  for ( auto info : socket_info_cache_ ) 
+    delete info;
+
+  for ( auto info : bad_socket_infos_ )
+    delete info;
 }
 
 static bool check_curl_code(CURLcode code, const std::string& msg) {
