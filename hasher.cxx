@@ -4,6 +4,7 @@
 #include "hasher.hxx"
 #include <glibmm/thread.h>
 #include <iostream>
+#include "config.h"
 
 Derp::Hasher::Hasher() : m_threadPool(8) {
 
@@ -46,17 +47,36 @@ void Derp::Hasher::hash(const Derp::Request& request) {
 }
 
 void Derp::Hasher::hash_directory(const Glib::RefPtr<Gio::File>& dir) {
-  Glib
-::RefPtr<Gio::FileEnumerator> enumerator = dir->enumerate_children();
+  Glib::RefPtr<Gio::FileEnumerator> enumerator = dir->enumerate_children();
   for(auto info = enumerator->next_file(); info != 0; info = enumerator->next_file()) {
     Gio::FileType fileType = info->get_file_type();
     if (fileType != Gio::FileType::FILE_TYPE_REGULAR)
       // TODO: What do we do about symbolic links?
       // Curl might obliterate them........
       continue;
+    if (info->get_name().find(COLDWIND_PARTIAL_FILENAME_SUFFIX) != std::string::npos )
+      continue;
     auto file = dir->get_child(info->get_name());
     if (!is_hashed(file->get_path())) {
-      m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Hasher::hash_file), file) );
+      bool tryAgain = true;
+      while (tryAgain) {
+	tryAgain = false;
+	try {
+	  m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Hasher::hash_file), file) );
+	} catch ( Glib::ThreadError e ) {
+	  switch ( e.code() ) {
+	  case Glib::ThreadError::Code::AGAIN:
+	    std::cerr << "Error: Couldn't spin up thread for hasher: " << e.what() << std::endl;
+	    tryAgain = true;
+	    Glib::Thread::yield();
+	    break;
+	  default:
+	    std::cerr << "Error: Unknown threading error while hashing: " << e.what() << std::endl;
+	    tryAgain = false;
+	    break;
+	  }
+	}
+      }
     }
   }
   enumerator->close();
