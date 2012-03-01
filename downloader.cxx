@@ -59,6 +59,7 @@ Derp::Downloader::Downloader() : m_threadPool(4),
 
 Derp::Downloader::~Downloader() {
   Glib::Mutex::Lock lock(curl_mutex);
+  CURLMcode code;
 
   while ( !m_curl_queue.empty() ) {
     curl_easy_cleanup( m_curl_queue.front() );
@@ -66,13 +67,17 @@ Derp::Downloader::~Downloader() {
   }
 
   for ( auto iter = m_fos_map.begin(); iter != m_fos_map.end();) {
-    curl_multi_remove_handle( m_curlm, iter->first );
+    code = curl_multi_remove_handle( m_curlm, iter->first );
+    if (G_UNLIKELY( code != CURLM_OK )) {
+      std::err << "Error: While removing active handles from curl multi : "
+	       << curl_multi_strerror(code) << std::endl;
+    } 
     curl_easy_cleanup( iter->first );
     iter->second->close();
     m_fos_map.erase(iter++);
   }
 
-  CURLMcode code = curl_multi_cleanup( m_curlm );
+  code = curl_multi_cleanup( m_curlm );
   if (code != CURLM_OK) {
     std::cerr << "Error: While cleaning up curlm: " 
 	      << curl_multi_strerror(code) << std::endl;
