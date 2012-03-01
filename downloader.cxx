@@ -10,31 +10,38 @@ Derp::Downloader::Downloader() : m_threadPool(4),
 				 bad_socket_infos_(0)
 {
   if (!m_curlm) {
-    std::cerr << "Error: Could not initialize the curl multi interface" << std::endl;
+    std::cerr << "Error: Could not initialize the curl multi interface" 
+	      << std::endl;
     exit(EXIT_FAILURE);
   }
 
-  CURLMcode code = curl_multi_setopt(m_curlm, CURLMOPT_SOCKETFUNCTION, &Derp::curl_socket_cb);
+  CURLMcode code = curl_multi_setopt(m_curlm, CURLMOPT_SOCKETFUNCTION,
+				     &Derp::curl_socket_cb);
   if (code != CURLM_OK) {
-    std::cerr << "Error: While setting curl multi socket function: " << curl_multi_strerror(code) << std::endl;
+    std::cerr << "Error: While setting curl multi socket function: "
+	      << curl_multi_strerror(code) << std::endl;
     exit(EXIT_FAILURE);
   }
 
   code = curl_multi_setopt(m_curlm, CURLMOPT_SOCKETDATA, this);
   if (code != CURLM_OK) {
-    std::cerr << "Error: While setting curl multi socket function data: " << curl_multi_strerror(code) << std::endl;
+    std::cerr << "Error: While setting curl multi socket function data: "
+	      << curl_multi_strerror(code) << std::endl;
     exit(EXIT_FAILURE);
   }
 
-  code = curl_multi_setopt(m_curlm, CURLMOPT_TIMERFUNCTION, &Derp::curl_timer_cb);
+  code = curl_multi_setopt(m_curlm, CURLMOPT_TIMERFUNCTION,
+			   &Derp::curl_timer_cb);
   if (code != CURLM_OK) {
-    std::cerr << "Error: While setting curl multi timer function: " << curl_multi_strerror(code) << std::endl;
+    std::cerr << "Error: While setting curl multi timer function: "
+	      << curl_multi_strerror(code) << std::endl;
     exit(EXIT_FAILURE);
   }
 
   code = curl_multi_setopt(m_curlm, CURLMOPT_TIMERDATA, this);
   if (code != CURLM_OK) {
-    std::cerr << "Error: While setting curl multi timer function data: " << curl_multi_strerror(code) << std::endl;
+    std::cerr << "Error: While setting curl multi timer function data: "
+	      << curl_multi_strerror(code) << std::endl;
     exit(EXIT_FAILURE);
   }
 
@@ -43,7 +50,8 @@ Derp::Downloader::Downloader() : m_threadPool(4),
     if (curl) {
       m_curl_queue.push(curl);
     } else {
-      std::cerr << "Error: Couldn't create a curl handle! Out of memory already?" << std::endl;
+      std::cerr << "Error: Couldn't create a curl handle! "
+		<< "Out of memory already?" << std::endl;
       break;
     }
   }
@@ -66,7 +74,8 @@ Derp::Downloader::~Downloader() {
 
   CURLMcode code = curl_multi_cleanup( m_curlm );
   if (code != CURLM_OK) {
-    std::cerr << "Error: While cleaning up curlm: " << curl_multi_strerror(code) << std::endl;
+    std::cerr << "Error: While cleaning up curlm: " 
+	      << curl_multi_strerror(code) << std::endl;
   }
 
   for ( auto iter = m_file_map.begin(); iter != m_file_map.end();) {
@@ -85,7 +94,8 @@ Derp::Downloader::~Downloader() {
 
 static bool check_curl_code(CURLcode code, const std::string& msg) {
   if (code != CURLE_OK) {
-    std::cerr << "Error: " << msg << " : " << curl_easy_strerror(code) << std::endl; 
+    std::cerr << "Error: " << msg << " : " << curl_easy_strerror(code) 
+	      << std::endl; 
     return false;
   } else {
     return true;
@@ -94,7 +104,8 @@ static bool check_curl_code(CURLcode code, const std::string& msg) {
 
 static void curl_statistics_check_code(const CURLcode& code) {
   if (code != CURLE_OK) {
-    std::cerr << "Error: While collecting statistics on a completed download: " << curl_easy_strerror(code) << std::endl;
+    std::cerr << "Error: While collecting statistics on a completed download: "
+	      << curl_easy_strerror(code) << std::endl;
   }
 }
 
@@ -143,14 +154,22 @@ void Derp::Downloader::collect_statistics(CURL* curl) {
   code = curl_easy_getinfo(curl, CURLINFO_STARTTRANSFER_TIME, &starttransfer);
   curl_statistics_check_code(code);
 
-  std::cout << std::setw(6) << std::setprecision(5) << size / 1000.0 << " kB in " << std::setw(6) << std::setprecision(3) << total << " s [" << std::setw(6) << std::setprecision(5) << speed/1000.0 << " kB/s] {Estbl: " << std::setw(6) << std::setprecision(3) << starttransfer << " s} " << connects << "nc " << redirects << " rd (Total: ";
+  std::cout << std::setw(6) << std::setprecision(5) << size / 1000.0
+	    << " kB in " << std::setw(6) << std::setprecision(3) << total
+	    << " s [" << std::setw(6) << std::setprecision(5) << speed/1000.0
+	    << " kB/s] {Estbl: " << std::setw(6) << std::setprecision(3)
+	    << starttransfer << " s} " << connects << "nc " << redirects
+	    << " rd (Total: ";
   
   if (m_total_bytes > 1000 * 1000) 
-    std::cout << std::setw(6) << std::setprecision(4) << m_total_bytes / 1000000.0 << " MB";
+    std::cout << std::setw(6) << std::setprecision(4)
+	      << m_total_bytes / 1000000.0 << " MB";
   else 
-    std::cout << std::setw(6) << std::setprecision(4) << m_total_bytes / 1000.0 << " kB";
+    std::cout << std::setw(6) << std::setprecision(4)
+	      << m_total_bytes / 1000.0 << " kB";
 
-  std::cout << ", Ttl Avg Spd: " << std::setw(8) << std::setprecision(7) << (m_total_bytes / 1000.0) / m_timer.elapsed() << " kB/s)";
+  std::cout << ", Ttl Avg Spd: " << std::setw(8) << std::setprecision(7)
+	    << (m_total_bytes / 1000.0) / m_timer.elapsed() << " kB/s)";
 
   std::cout << " AS: " << active_sockets_.size();
   std::cout << " SIC: " << socket_info_cache_.size();
@@ -159,34 +178,50 @@ void Derp::Downloader::collect_statistics(CURL* curl) {
   std::cout << std::endl;
 }
 
-void Derp::Downloader::finish_file_operations(CURL* curl, bool download_error) {
+bool Derp::Downloader::finish_file_operations(CURL* curl, bool download_error) {
+  bool finished_ok = true;
   ASSERT_LOCK("finish_file_operations");
-
-  if (m_fos_map.count(curl) != 1) {
-    std::cerr << "Error: Got a curl reference that is not in our private map." << std::endl;
+  
+  if (G_UNLIKELY(m_fos_map.count(curl) != 1 && m_file_map.count(curl) != 1)) {
+    std::cerr << "Error: Got a curl reference that is not in our private map."
+	      << std::endl;
+    finished_ok = false;
   } else {
     const auto fos_iter = m_fos_map.find(curl);
+    const auto file_iter = m_file_map.find(curl);
     try {
       fos_iter->second->close();
     } catch (Gio::Error e) {
-      std::cerr << "Error: While closing a file: " << e.what() << std::endl;
+      std::cerr << "Error: While closing " << file_iter->second->get_parse_name()
+		<< " : " << e.what() << std::endl;
     }
     m_fos_map.erase(fos_iter);
     
-    const auto file_iter = m_file_map.find(curl);
     try {
       if (download_error) {
 	file_iter->second->remove();
       } else {
-	const Glib::ustring parse_name(file_iter->second->get_parse_name());
-	const auto p_new_filename = Gio::File::create_for_parse_name(parse_name.substr(0, parse_name.rfind(COLDWIND_PARTIAL_FILENAME_SUFFIX)));
-	file_iter->second->move(p_new_filename);
+	Glib::ustring parse_name(file_iter->second->get_parse_name());
+	parse_name.erase(parse_name.rfind(COLDWIND_PARTIAL_FILENAME_SUFFIX));
+	const auto new_filename = Gio::File::create_for_parse_name(parse_name);
+	Gio::FileCopyFlags flags = Gio::FILE_COPY_OVERWRITE;
+	flags |= Gio::FILE_COPY_NOFOLLOW_SYMLINKS;
+	file_iter->second->move(new_filename, flags);
       }
     } catch (Gio::Error e) {
       std::cerr << "Error: While renaming file: " << e.what() << std::endl;
+      finished_ok = false;
+      try {
+	file_iter->second->remove();
+      } catch (Gio::Error err) {
+	std::cerr << "Error: Could not clean up "
+		  << file_iter->second->get_parse_name() << " : " << err.what()
+		  << std::endl;
+      }
     }
     m_file_map.erase(file_iter);
   }
+  return finished_ok;
 }
 
 void Derp::Downloader::curl_check_info() {
@@ -196,6 +231,7 @@ void Derp::Downloader::curl_check_info() {
   CURLMcode mcode;
   CURLMsg* msg;
   bool download_error = false;
+  bool file_ok;
 
   ASSERT_LOCK("curl_check_info");
 
@@ -210,13 +246,14 @@ void Derp::Downloader::curl_check_info() {
 	  download_error = true;
 
 	mcode = curl_multi_remove_handle(m_curlm, curl);
-	if (mcode != CURLM_OK) {
-	  std::cerr << "Error: While removing curl handle from multi: " << curl_multi_strerror(mcode) << std::endl;
+	if (G_UNLIKELY(mcode != CURLM_OK)) {
+	  std::cerr << "Error: While removing curl handle from multi: "
+		    << curl_multi_strerror(mcode) << std::endl;
 	}
 
-	finish_file_operations(curl, download_error);
+	file_ok = finish_file_operations(curl, download_error);
 
-	if (!download_error) {
+	if (G_LIKELY(!download_error && file_ok)) {
 	  collect_statistics(curl);
 	  signal_download_finished();
 	} else {
@@ -224,10 +261,18 @@ void Derp::Downloader::curl_check_info() {
 	}
 
 	start_new_download(curl);
-
+	break;
+      case CURLMSG_NONE:
+	std::cerr << "Warning: Unexpected MSG_NONE from curl info read."
+		  << std::endl;
+	break;
+      case CURLMSG_LAST:
+	std::cerr << "Warning: Unexpected MSG_LAST from curl info read."
+		  << std::endl;
 	break;
       default:
-	std::cerr << "Warning: Unexpected message received from curl info read." << std::endl;
+	std::cerr << "Warning: Unexpected message " << msg->msg
+		  << " from curl info read." << std::endl;
       }
     }
   } while(msg != NULL && msgs_left > 0);
@@ -235,17 +280,23 @@ void Derp::Downloader::curl_check_info() {
 
 void Derp::Downloader::start_new_download(CURL* curl) {
   std::list<Derp::Image>::iterator iter;
-  bool setup_ok;
   ASSERT_LOCK("start_new_download");
 
   iter = m_imgs.begin();
   if (iter != m_imgs.end()) {
     curl_easy_reset(curl);
-    setup_ok = curl_setup(curl, *iter);
-    if (setup_ok) {
-      curl_multi_add_handle(m_curlm, curl);
+    const bool setup_ok = curl_setup(curl, *iter);
+    if (G_LIKELY( setup_ok )) {
+      CURLMcode code = curl_multi_add_handle(m_curlm, curl);
+      if (G_LIKELY( code == CURLM_OK )) {
+	m_imgs.erase(iter);
+      } else {
+	std::cerr << "Error: While adding a new download to multi handle : "
+		  << curl_multi_strerror(code) << std::endl;
+	curl_easy_reset(curl);
+	m_curl_queue.push(curl);
+      }
     }
-    m_imgs.erase(iter);
   } else {
     curl_easy_reset(curl);
     m_curl_queue.push(curl);
@@ -253,8 +304,9 @@ void Derp::Downloader::start_new_download(CURL* curl) {
 }
 
 inline void Derp::Downloader::ASSERT_LOCK(const std::string& func) const {
-  if(curl_mutex.trylock()) {
-    std::cout << "Assertion error: " << func << " called and curl_mutex is not locked!" << std::endl;
+  if(G_UNLIKELY(curl_mutex.trylock())) {
+    std::cout << "Assertion error: " << func
+	      << " called and curl_mutex is not locked!" << std::endl;
     curl_mutex.unlock();
   }
 }
@@ -279,25 +331,29 @@ int Derp::curl_timer_cb(CURLM*,    /* multi handle */
   } else if (timeout_ms == 0) {
     downloader->curl_timeout_expired_cb();
   } else {
-    downloader->m_timeout_connection = Glib::signal_timeout().connect( sigc::mem_fun(*downloader, &Derp::Downloader::curl_timeout_expired_cb), timeout );
+    auto s = sigc::mem_fun(*downloader, &Downloader::curl_timeout_expired_cb);
+    downloader->m_timeout_connection = Glib::signal_timeout().connect(s, timeout);
   }
+
   return 0;
 }
 
 /* 
    Called by Glib::MainLoop
  */
-
 bool Derp::Downloader::curl_timeout_expired_cb() {
-  m_threadPool.push( sigc::mem_fun(*this, &Derp::Downloader::curl_timeout_expired ) );
+  const auto s = sigc::mem_fun(*this, &Derp::Downloader::curl_timeout_expired );
+  m_threadPool.push( s );
   return false;
 }
 
 void Derp::Downloader::curl_timeout_expired() {
   Glib::Mutex::Lock lock(curl_mutex);
-  CURLMcode code = curl_multi_socket_action(m_curlm, CURL_SOCKET_TIMEOUT, 0, &m_running_handles);
-  if (code != CURLM_OK) {
-    std::cerr << "Error: Curl socket action error from timeout: " << curl_multi_strerror(code) << std::endl;
+  CURLMcode code = curl_multi_socket_action(m_curlm, CURL_SOCKET_TIMEOUT, 0,
+					    &m_running_handles);
+  if (G_UNLIKELY( code != CURLM_OK )) {
+    std::cerr << "Error: Curl socket action error from timeout: "
+	      << curl_multi_strerror(code) << std::endl;
   }
 
   curl_check_info();
@@ -306,33 +362,39 @@ void Derp::Downloader::curl_timeout_expired() {
 /* 
    Called from Glib::MainLoop when socket s has activity
 */
-bool Derp::Downloader::curl_event_cb(Glib::IOCondition condition, curl_socket_t s) {
+bool Derp::Downloader::curl_event_cb(Glib::IOCondition condition,
+				     curl_socket_t s) {
   int action = (condition & Glib::IO_IN ? CURL_CSELECT_IN : 0) |
     (condition & Glib::IO_OUT ? CURL_CSELECT_OUT : 0);
-  m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Derp::Downloader::curl_event), action, s) );
+  const auto slot = sigc::mem_fun(*this, &Derp::Downloader::curl_event);
+  m_threadPool.push( sigc::bind(slot, action, s) );
   
   return true;
 }
 
+/*
+  A new thread started by the MainLoop above because socket s has
+  activity. We must take the lock.
+ */
 void Derp::Downloader::curl_event(int action, curl_socket_t s) {
   Glib::Mutex::Lock lock(curl_mutex);
   CURLMcode code;
 
   code = curl_multi_socket_action(m_curlm, s, action, &m_running_handles);
-  if (code != CURLM_OK) {
-    std::cerr << "Error: Curl socket action error from event: " << curl_multi_strerror(code) << std::endl;
+  if (G_UNLIKELY( code != CURLM_OK )) {
+    std::cerr << "Error: Curl socket action error from event: "
+	      << curl_multi_strerror(code) << std::endl;
   }
   curl_check_info();
-  if (!m_running_handles) {
+  if (m_running_handles == 0) {
     if (m_timeout_connection.connected())
       m_timeout_connection.disconnect();
-    // Here we used to return false to disconnect this socket from the GIOChannel
   }
 }
 
-void Derp::Downloader::curl_setsock(Socket_Info* info, curl_socket_t s, CURL*, int action) {
+void Derp::Downloader::curl_setsock(Socket_Info* info, curl_socket_t s,
+				    CURL*, int action) {
   Glib::IOCondition condition = Glib::IO_IN ^ Glib::IO_IN;
-
   ASSERT_LOCK("curl_setsock");
 
   if (action & CURL_POLL_IN)
@@ -342,16 +404,21 @@ void Derp::Downloader::curl_setsock(Socket_Info* info, curl_socket_t s, CURL*, i
 
   if (info->connection.connected())
     info->connection.disconnect();
-  info->connection = Glib::signal_io().connect( sigc::bind(sigc::mem_fun(*this, &Derp::Downloader::curl_event_cb), s), info->channel, condition );
+  const auto slot = sigc::mem_fun(*this, &Derp::Downloader::curl_event_cb);
+  info->connection = Glib::signal_io().connect( sigc::bind(slot, s), 
+						info->channel,
+						condition );
 }
 
 void Derp::Downloader::curl_addsock(curl_socket_t s, CURL *easy, int action) {
   ASSERT_LOCK("curl_addsock");
 
-  if( std::count(active_sockets_.begin(), active_sockets_.end(), s) == 0 ) {
+  if( G_LIKELY( std::count(active_sockets_.begin(),
+			   active_sockets_.end(), s) == 0 )) {
     active_sockets_.push_back(s);
   } else {
-    std::cerr << "Error: curl_addsock got called twice for the same socket. I don't know what to do!" << std::endl;
+    std::cerr << "Error: curl_addsock got called twice for the same socket."
+	      << " I don't know what to do!" << std::endl;
   }
   
   Socket_Info* info;
@@ -362,10 +429,12 @@ void Derp::Downloader::curl_addsock(curl_socket_t s, CURL *easy, int action) {
     socket_info_cache_.pop_back();
   }
   
-  if ( std::count(active_socket_infos_.begin(), active_socket_infos_.end(), info) == 0 ) {
+  if ( G_LIKELY(std::count(active_socket_infos_.begin(), 
+			   active_socket_infos_.end(), info) == 0 )) {
     active_socket_infos_.push_back(info);
   } else {
-    std::cerr << "Error: Somehow the info we are assigning is already active!" << std::endl;
+    std::cerr << "Error: Somehow the info we are assigning is already active!"
+	      << std::endl;
   }
     
   #if COLDWIND_WINDOWS
@@ -373,17 +442,30 @@ void Derp::Downloader::curl_addsock(curl_socket_t s, CURL *easy, int action) {
   #else
   info->channel = Glib::IOChannel::create_from_fd(s);
   #endif
+
+  if ( G_UNLIKELY( !info->channel )) {
+    std::cerr << "Error: Unable to create IOChannel for socket " << s
+	      << std::endl;
+  }
+
   curl_setsock(info, s, easy, action);
-  curl_multi_assign(m_curlm, s, info);
+  CURLMcode code = curl_multi_assign(m_curlm, s, info);
+  if (G_UNLIKELY( code != CURLM_OK )) {
+    std::cerr << "Error: Unable to assign Socket_Info to socket : "
+	      << curl_multi_strerror(code) << std::endl;
+  }
 }
 
 void Derp::Downloader::curl_remsock(Socket_Info* info, curl_socket_t s) {
   ASSERT_LOCK("curl_remsock");
 
-  if (!info)
+  if (G_UNLIKELY( !info ))
     return;
-  if ( std::count(active_sockets_.begin(), active_sockets_.end(), s) > 0) {
-    if ( std::count(active_socket_infos_.begin(), active_socket_infos_.end(), info) > 0) {
+
+  if (G_LIKELY( std::count(active_sockets_.begin(), 
+			   active_sockets_.end(), s) > 0 )) {
+    if (G_LIKELY( std::count(active_socket_infos_.begin(),
+			     active_socket_infos_.end(), info) > 0 )) {
       // We SHOULD NOT call info->channel->close(). This closes curl's
       // cached connection to the server.
       info->connection.disconnect();
@@ -392,18 +474,21 @@ void Derp::Downloader::curl_remsock(Socket_Info* info, curl_socket_t s) {
       active_socket_infos_.remove(info); 
       active_sockets_.remove(s);
     } else {
-      std::cerr << "Warning: curl_remsock called on info " << info << " socket " << s << ",  but that info is not active!" << std::endl;
+      std::cerr << "Warning: curl_remsock called on info " << info << " socket "
+		<< s << ",  but that info is not active!" << std::endl;
       bad_socket_infos_.push_back(info);
       // TODO: Figure out what to do with these bad boys.
     }
   } else {
-    std::cerr << "Warning: curl_remsock was called twice for the same socket. This should be safe to ignore." << std::endl;
+    std::cerr << "Warning: curl_remsock was called twice for the same socket. "
+	      << "This should be safe to ignore." << std::endl;
   }
 }
 
 /* 
    Called by curl, so should be in a thread. But we don't have a
-   pointer to Downloader to assert.
+   pointer to Downloader to assert. In anycase, we're not touching
+   anything that needs to be mutex'd.
  */
 size_t Derp::write_cb(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
@@ -423,7 +508,8 @@ size_t Derp::write_cb(void *ptr, size_t size, size_t nmemb, void *userdata)
 bool Derp::Downloader::curl_setup(CURL* curl, const Derp::Image& img) {
   const Glib::ustring url(img.getUrl());
   const std::string filename(img.getFilename());
-  const std::string filepath(Glib::build_filename(m_target_dir->get_path(), filename));
+  const std::string filepath(Glib::build_filename(m_target_dir->get_path(),
+						  filename));
   Glib::RefPtr<Gio::File> p_file;
   Glib::RefPtr<Gio::FileOutputStream> p_fos;
   CURLcode code;
@@ -447,45 +533,52 @@ bool Derp::Downloader::curl_setup(CURL* curl, const Derp::Image& img) {
 	  for ( guint32 i = 1; p_file->query_exists(); i++ ) {
 	    std::stringstream st;
 	    st << name << " (" << i << ")" << ext;
-	    p_file = Gio::File::create_for_path(Glib::build_filename(m_target_dir->get_path(), st.str()));
+	    auto path = Glib::build_filename(m_target_dir->get_path(), st.str());
+	    p_file = Gio::File::create_for_path( path );
 	  }
 	} else { // useOriginalFilename == false
 	  if (p_file->query_exists()) {
-	    std::cerr << "Warning: File " << filepath << " already exists, but the hash does not match. Overwriting. Repeated warning messages may indicate filesystem corruption or a programming error in coldwind." << std::endl;
+	    std::cerr << "Warning: File " << filepath << " already exists, "
+		      << "but the hash does not match. Overwriting. Repeated "
+		      << "warning messages may indicate filesystem corruption "
+		      << "or a programming error in coldwind." << std::endl;
 	  }
 	}
       }
     } 
     
     // At this point, p_file points to the name we're going to use
-    p_file = Gio::File::create_for_parse_name(p_file->get_parse_name().append(COLDWIND_PARTIAL_FILENAME_SUFFIX));
+    auto name = p_file->get_parse_name().append(COLDWIND_PARTIAL_FILENAME_SUFFIX);
+    p_file = Gio::File::create_for_parse_name(name);
     p_fos = p_file->replace();
   } catch (Gio::Error e) {
     switch (e.code()) {
     case Gio::Error::Code::EXISTS:
-      std::cerr << "Warning: File " << filepath << " already exists. Skipping." << std::endl;
+      std::cerr << "Warning: File " << filepath << " already exists. Skipping."
+		<< std::endl;
       goto on_file_failure;
       break;
     default:
-      std::cerr << "Error creating file " << filepath << ": " << e.what() << std::endl;
+      std::cerr << "Error creating file " << filepath << ": " << e.what()
+		<< std::endl;
       goto on_file_failure;
     }
   }
   
   code = curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-  if (!check_curl_code(code, "While setting url"))
+  if (G_UNLIKELY( !check_curl_code(code, "While setting curl URL" )))
     goto on_setup_failure;
   
   code = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &Derp::write_cb);
-  if (!check_curl_code(code, "While setting curl write function"))
+  if (G_UNLIKELY( !check_curl_code(code, "While setting curl WRITEFUNCTION" )))
     goto on_setup_failure;
   
   code = curl_easy_setopt(curl, CURLOPT_WRITEDATA, p_fos->gobj());
-  if (!check_curl_code(code, "While setting curl write data"))
+  if (G_UNLIKELY( !check_curl_code(code, "While setting curl WRITEDATA" )))
     goto on_setup_failure;
 
   code = curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
-  if (!check_curl_code(code, "While setting curl to fail on error"))
+  if (G_UNLIKELY( !check_curl_code(code, "While setting curl FAILONERROR" )))
     goto on_setup_failure;
   
 
@@ -513,29 +606,33 @@ void Derp::Downloader::download_imgs_multi() {
     } else {
       CURL* curl = m_curl_queue.front(); m_curl_queue.pop();
       bool setup_ok = curl_setup(curl, *it);
-      if (!setup_ok) {
+      if (G_UNLIKELY( !setup_ok )) {
 	curl_easy_reset(curl);
 	m_curl_queue.push(curl);
       } else {
 	m_code = curl_multi_add_handle(m_curlm, curl); 
-	if (m_code != CURLM_OK) {
-	  std::cerr << "Error: While adding curl handle to curl multi handle: " << curl_multi_strerror(m_code) << std::endl;
+	if (G_UNLIKELY( m_code != CURLM_OK )) {
+	  std::cerr << "Error: While adding curl handle to curl multi handle: "
+		    << curl_multi_strerror(m_code) << std::endl;
 	  curl_easy_reset(curl);
 	  m_curl_queue.push(curl);
+	} else {
+	  m_imgs.erase(it);
 	}
       }
     }
-    m_imgs.erase(it);
   }
 }
 
-void Derp::Downloader::download_async(const std::list<Derp::Image>& imgs, const Derp::Request& request) {
+void Derp::Downloader::download_async(const std::list<Derp::Image>& imgs,
+				      const Derp::Request& request) {
   m_request = request;
   m_imgs = imgs;
   m_target_dir = request.getDirectory();
   m_timer.reset();
   m_timer.start();
   m_total_bytes = 0;
-
-  m_threadPool.push( sigc::mem_fun(*this, &Derp::Downloader::download_imgs_multi) );
+  
+  const auto slot = sigc::mem_fun(*this, &Derp::Downloader::download_imgs_multi);
+  m_threadPool.push( slot );
 }

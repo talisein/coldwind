@@ -63,7 +63,7 @@ namespace Derp {
 
     inline void ASSERT_LOCK(const std::string& func) const;
     void collect_statistics(CURL* curl);
-    void finish_file_operations(CURL* curl, bool hasDownloadError);
+    bool finish_file_operations(CURL* curl, bool hasDownloadError);
     void start_new_download(CURL* curl);
 
     bool curl_setup(CURL* curl, const Derp::Image& img);
