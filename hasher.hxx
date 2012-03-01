@@ -20,6 +20,7 @@ namespace Derp {
     bool is_downloaded(const Image& img) const;
 
   private:
+    static const goffset MAXIMUM_FILESIZE = 5100 * 1000;
     Hasher& operator=(const Hasher&); // Evil func
     Hasher(const Hasher&); // Evil func
 
