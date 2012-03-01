@@ -17,9 +17,6 @@
   ** Or some sort of visual lurker feedback. I dunno. [Hard]
   *** Well, there's some std::cout things now. [Partly done]
 
-  * The hasher shouldn't try to hash anything larger than 4chan's
-    maximum image size [Easy]
-
   * In Glib 3.32, use GResources. And it looks like GApplication will
     finally land. [Longterm]
 
@@ -32,13 +29,7 @@
 
   * set_sensitivity(false) on the spinner when lurk-to-404 [Easy]
 
-  * In the parser, use libcurl instead of libxml2 to fetch the HTML [Hard]
-  ** Use CURLOPT_TIMECONDITION = CURL_TIMECOND_IFMODSINCE and
-     CURLOPT_TIMEVALUE = long unix timestamp
-  *** Only the lurker uses this functionality
-  ** The HTML parsing can probably be done in CURLOPT_WRITEFUNCTION
-  ** Might as well cache the connection
-  ** Rewrite the 404 logic
+  * Catch signal_fetching_error from Parser [Easy]
 
   * Make sure that we ignore everything after # after the last / in
     the thread url [Easy]
@@ -46,3 +37,9 @@
   * Make a utility function to implement getBoard(), getThread(). Have
     Request use that, and then application can use the utility
     functions directly in update_thread_dir_completer [Easy]
+
+  * Save the thread to the target directory and re-write image links
+    to the file we save to. [Hard+]
+
+  * Subclass Window and move all the UI stuff out of application
+    [Easy+]
