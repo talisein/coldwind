@@ -10,34 +10,38 @@ Derp::Parser::Parser() : parser_error_(false) {
   sax->characters = &onCharacters;
   sax->serror = &on_xmlError;
   sax->initialized = XML_SAX2_MAGIC;
-  ctxt = xmlCreatePushParserCtxt(sax, this, NULL, 0, NULL);
+
+  ctxt = htmlCreatePushParserCtxt(sax, this, NULL, 0, NULL, XML_CHAR_ENCODING_UTF8);
+  htmlCtxtUseOptions(ctxt, HTML_PARSE_RECOVER | HTML_PARSE_NONET);
+
+  curl = curl_easy_init();
 }
 
 Derp::Parser::~Parser() {
+  curl_easy_cleanup(curl);
+  htmlFreeParserCtxt(ctxt);
   free(sax);
 }
 
 void Derp::on_xmlError(void* user_data, xmlErrorPtr error) {
   Derp::Parser* parser = static_cast<Derp::Parser*>(user_data);
-  switch (error->domain) {
-  case XML_FROM_IO:
-    switch (error->code) {
-    case XML_IO_LOAD_ERROR:
-      parser->parser_error_ = true;
-      parser->signal_thread_404();
-      break;
-    default:
-      std::cerr << "Error: Got libxml2 IO error code " << error->code << std::endl;
-    }
-    break;
-  case XML_FROM_HTML:
+  switch (error->code) {
+  case XML_ERR_NAME_REQUIRED:
+  case XML_ERR_TAG_NAME_MISMATCH:
+  case XML_ERR_ENTITYREF_SEMICOL_MISSING:
     // Ignore
     break;
   default:
-    std::cerr << "Error: Got unexpected libxml2 error code " << error->code << " from domain " << error->domain << " which means: " << error->message << std::endl;
-    std::cerr << "\tPlease report this error to the developer." << std::endl;
-    parser->parser_error_ = true;
-    break;
+    if (error->domain == XML_FROM_HTML) {
+      std::cerr << "Warning: Got unexpected libxml2 HTML error code " 
+		<< error->code << ". This is probably ok." << std::endl;
+    } else {
+      std::cerr << "Error: Got unexpected libxml2 error code " 
+		<< error->code << " from domain " << error->domain << " which means: " 
+		<< error->message << std::endl;
+      std::cerr << "\tPlease report this error to the developer." << std::endl;
+      parser->parser_error_ = true;
+    }
   }
 }
 
@@ -47,10 +51,94 @@ void Derp::on_xmlError(void* user_data, xmlErrorPtr error) {
 void Derp::Parser::parse_thread(const Derp::Request& request) {
   request_ = request;
   parser_error_ = false;
-  htmlCtxtReadFile(ctxt, request_.getUrl().c_str(), NULL, HTML_PARSE_RECOVER);
+  bool fetchingError = false;
+  Glib::DateTime now = Glib::DateTime::create_now_utc();
+  
+  if (!setup_curl( request_.getUrl() )) {
+    std::cerr << "Error: Couldn't setup curl for fetching " << request_.getUrl() << std::endl;
+    signal_fetching_error();
+    return;
+  }
 
-  if (!parser_error_)
-    signal_parsing_finished();
+  CURLcode code = curl_easy_perform(curl);
+
+  /**
+     Handle curl errors
+  **/
+  if (code != CURLE_OK) {
+    fetchingError = true;
+    long responseCode;
+    switch (code) {
+    case CURLE_HTTP_RETURNED_ERROR:
+      curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
+      if (responseCode == 404) {
+	signal_thread_404();
+      } else {
+	std::cerr << "Error: Curl ran into an HTTP " << responseCode << " error.";
+	signal_fetching_error();
+      }
+      break;
+    default:
+      std::cerr << "Error: Curl couldn't fetch the thread: " << curl_easy_strerror(code) << std::endl;
+      signal_fetching_error();
+    }
+  }
+  /**
+     Curl errors are handled
+  **/
+
+  if (!fetchingError) {
+    htmlParseChunk(ctxt, 0, 0, 1);
+    if (!parser_error_) {
+      m_lastupdate_map.erase(request_.getUrl());
+      m_lastupdate_map.insert({request_.getUrl(), now});
+      signal_parsing_finished();
+    }
+  }
+}
+
+size_t Derp::parser_write_cb(void *ptr, size_t size, size_t nmemb, void *userdata) {
+  Derp::Parser* parser = static_cast<Derp::Parser*>(userdata);
+  
+  htmlParseChunk(parser->ctxt, static_cast<char*>(ptr), size*nmemb, 0);
+  return size*nmemb;
+}
+
+static bool is_code_ok(CURLcode code, std::string str) {
+  if (code != CURLE_OK) {
+    std::cerr << "Error: While setting up curl to fetch the thread in " << str << " : " << curl_easy_strerror(code) << std::endl;
+    return false;
+  }
+  return true;
+}
+
+bool Derp::Parser::setup_curl(const Glib::ustring& url) {
+  CURLcode code;
+  bool ok = true;
+
+  curl_easy_reset(curl);
+
+  code = curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+  ok = ok && is_code_ok(code, "URL");
+
+  code = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &Derp::parser_write_cb);
+  ok = ok && is_code_ok(code, "WRITEFUNCTION");
+
+  code = curl_easy_setopt(curl, CURLOPT_WRITEDATA, this);
+  ok = ok && is_code_ok(code, "WRITEDATA");
+
+  code = curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+  ok = ok && is_code_ok(code, "FAILONERROR");
+
+  if ( m_lastupdate_map.count(url) > 0 ) {
+    code = curl_easy_setopt(curl, CURLOPT_TIMECONDITION, CURL_TIMECOND_IFMODSINCE);
+    ok = ok && is_code_ok(code, "TIMECONDITION");
+
+    code = curl_easy_setopt(curl, CURLOPT_TIMEVALUE, m_lastupdate_map.find(url)->second.to_unix());
+    ok = ok && is_code_ok(code, "TIMEVALUE");
+  }
+
+  return ok;
 }
 
 void Derp::startElement(void* user_data, const xmlChar* name, const xmlChar** attrs) {
