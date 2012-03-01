@@ -19,7 +19,7 @@ void Derp::Hasher::hash(const Derp::Request& request) {
   m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Hasher::hash_directory), base));
 
   auto enumerator = base->enumerate_children("standard::type,standard::name");
-  for ( auto info = enumerator->next_file(); info != 0; info = enumerator->next_file()) {
+  for ( auto info = enumerator->next_file(); info; info = enumerator->next_file()) {
       if ( info->get_file_type() == Gio::FileType::FILE_TYPE_DIRECTORY ) {
 	m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Hasher::hash_directory),
 				      base->get_child(info->get_name())));
@@ -31,7 +31,7 @@ void Derp::Hasher::hash(const Derp::Request& request) {
   auto board_dir = base->get_child(Glib::filename_from_utf8(request.getBoard()));
   if (board_dir->query_exists()) {
     auto board_enumerator = board_dir->enumerate_children("standard::type,standard::name");
-    for ( auto info = board_enumerator->next_file(); info != 0; info = board_enumerator->next_file()) {
+    for ( auto info = board_enumerator->next_file(); info; info = board_enumerator->next_file()) {
       if ( info->get_file_type() == Gio::FileType::FILE_TYPE_DIRECTORY ) {
 	m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Hasher::hash_directory),
 				      board_dir->get_child(info->get_name())));
@@ -48,7 +48,7 @@ void Derp::Hasher::hash(const Derp::Request& request) {
 
 void Derp::Hasher::hash_directory(const Glib::RefPtr<Gio::File>& dir) {
   Glib::RefPtr<Gio::FileEnumerator> enumerator = dir->enumerate_children("standard::type,standard::name,standard::size");
-  for(auto info = enumerator->next_file(); info != 0; info = enumerator->next_file()) {
+  for(auto info = enumerator->next_file(); info; info = enumerator->next_file()) {
     if ( info->get_file_type() != Gio::FileType::FILE_TYPE_REGULAR )
       continue;
     if ( info->get_size() > MAXIMUM_FILESIZE )
