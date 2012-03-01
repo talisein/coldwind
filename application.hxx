@@ -48,7 +48,7 @@ namespace Derp {
     void update_thread_dir_completer();
     void update_thread_dir_finish(const Glib::RefPtr<Gio::AsyncResult>& result);
     void on_url_entry(guint, const gchar*, guint);
-    void on_board_toggled() {update_thread_dir_completer();};
+    void on_board_toggled();
     void on_thread_toggled();
 
     int num_downloading;
@@ -74,6 +74,7 @@ namespace Derp {
     Gtk::CheckButton* m_threadDirCheckbox;
     Gtk::CheckButton* m_originalFilenameCheckbox;
     Gtk::CheckButton* m_lurk404Checkbox;
+    Gtk::Grid* m_headerGrid;
     Glib::RefPtr<Gdk::PixbufAnimation> m_killmegif;
     Glib::RefPtr<Gdk::PixbufAnimation> m_errorgif;
     Glib::RefPtr<Gdk::Pixbuf> m_fangpng;

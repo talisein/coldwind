@@ -26,10 +26,13 @@ Derp::Application::Application(int argc, char*argv[]) :
     refBuilder->get_widget("originalFilenameCheckbox", m_originalFilenameCheckbox);
     refBuilder->get_widget("lurk404Checkbox", m_lurk404Checkbox);
     refBuilder->get_widget("threadLabel", m_threadLabel);
+    refBuilder->get_widget("grid2", m_headerGrid);
 
     m_lurkAdjustment = Glib::RefPtr<Gtk::Adjustment>::cast_static(refBuilder->get_object("lurkAdjustment"));
     m_xAdjustment = Glib::RefPtr<Gtk::Adjustment>::cast_static(refBuilder->get_object("xAdjustment"));
     m_yAdjustment = Glib::RefPtr<Gtk::Adjustment>::cast_static(refBuilder->get_object("yAdjustment"));
+
+    m_headerGrid->set_focus_chain({m_urlEntry, m_fileChooserButton, m_threadFolderEntry, m_goButton});
 
     m_threadListStore = Gtk::ListStore::create(Derp::ThreadDirColumns::getInstance());
     m_entryCompletion = Gtk::EntryCompletion::create();
@@ -74,13 +77,25 @@ void Derp::Application::run() {
   m_kit.run(*m_window);
 }
 
+void Derp::Application::on_board_toggled() {
+  if ( !m_boardDirCheckbox->get_active() && !m_threadDirCheckbox->get_active())
+    m_threadLabel->set_visible(false);
+  else 
+    m_threadLabel->set_visible(true);
+
+  update_thread_dir_completer();
+}
+
 void Derp::Application::on_thread_toggled() {
+  if ( !m_boardDirCheckbox->get_active() && !m_threadDirCheckbox->get_active())
+    m_threadLabel->set_visible(false);
+  else 
+    m_threadLabel->set_visible(true);
+
   if ( m_threadDirCheckbox->get_active() ) {
     m_threadFolderEntry->set_visible(true);
-    m_threadLabel->set_visible(true);
     update_thread_dir_completer();
   } else { 
-    m_threadLabel->set_visible(false);
     m_threadFolderEntry->set_visible(false);
   }
 }
