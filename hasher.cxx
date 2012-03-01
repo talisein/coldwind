@@ -18,7 +18,7 @@ void Derp::Hasher::hash(const Derp::Request& request) {
   Glib::RefPtr<Gio::File> base = request.getHashDirectory();
   m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Hasher::hash_directory), base));
 
-  auto enumerator = base->enumerate_children();
+  auto enumerator = base->enumerate_children("standard::type,standard::name");
   for ( auto info = enumerator->next_file(); info != 0; info = enumerator->next_file()) {
       if ( info->get_file_type() == Gio::FileType::FILE_TYPE_DIRECTORY ) {
 	m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Hasher::hash_directory),
@@ -30,7 +30,7 @@ void Derp::Hasher::hash(const Derp::Request& request) {
 
   auto board_dir = base->get_child(Glib::filename_from_utf8(request.getBoard()));
   if (board_dir->query_exists()) {
-    auto board_enumerator = board_dir->enumerate_children();
+    auto board_enumerator = board_dir->enumerate_children("standard::type,standard::name");
     for ( auto info = board_enumerator->next_file(); info != 0; info = board_enumerator->next_file()) {
       if ( info->get_file_type() == Gio::FileType::FILE_TYPE_DIRECTORY ) {
 	m_threadPool.push( sigc::bind(sigc::mem_fun(*this, &Hasher::hash_directory),
@@ -47,15 +47,15 @@ void Derp::Hasher::hash(const Derp::Request& request) {
 }
 
 void Derp::Hasher::hash_directory(const Glib::RefPtr<Gio::File>& dir) {
-  Glib::RefPtr<Gio::FileEnumerator> enumerator = dir->enumerate_children();
+  Glib::RefPtr<Gio::FileEnumerator> enumerator = dir->enumerate_children("standard::type,standard::name,standard::size");
   for(auto info = enumerator->next_file(); info != 0; info = enumerator->next_file()) {
-    Gio::FileType fileType = info->get_file_type();
-    if (fileType != Gio::FileType::FILE_TYPE_REGULAR)
-      // TODO: What do we do about symbolic links?
-      // Curl might obliterate them........
+    if ( info->get_file_type() != Gio::FileType::FILE_TYPE_REGULAR )
       continue;
-    if (info->get_name().find(COLDWIND_PARTIAL_FILENAME_SUFFIX) != std::string::npos )
+    if ( info->get_size() > MAXIMUM_FILESIZE )
       continue;
+    if ( info->get_name().find(COLDWIND_PARTIAL_FILENAME_SUFFIX) != std::string::npos )
+      continue;
+
     auto file = dir->get_child(info->get_name());
     if (!is_hashed(file->get_path())) {
       bool tryAgain = true;
