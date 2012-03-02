@@ -11,15 +11,11 @@ Derp::Parser::Parser() : parser_error_(false) {
   sax->serror = &on_xmlError;
   sax->initialized = XML_SAX2_MAGIC;
 
-  ctxt = htmlCreatePushParserCtxt(sax, this, NULL, 0, NULL, XML_CHAR_ENCODING_UTF8);
-  htmlCtxtUseOptions(ctxt, HTML_PARSE_RECOVER | HTML_PARSE_NONET);
-
   curl = curl_easy_init();
 }
 
 Derp::Parser::~Parser() {
   curl_easy_cleanup(curl);
-  htmlFreeParserCtxt(ctxt);
   free(sax);
 }
 
@@ -60,6 +56,16 @@ void Derp::Parser::parse_thread(const Derp::Request& request) {
     return;
   }
 
+  ctxt = htmlCreatePushParserCtxt(sax, this, NULL, 0, NULL, XML_CHAR_ENCODING_UTF8);
+  if (G_UNLIKELY( ctxt == NULL )) {
+    std::cerr << "Unable to create libxml2 HTML context!" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+  int ret = htmlCtxtUseOptions(ctxt, HTML_PARSE_RECOVER );
+
+  if (G_UNLIKELY( ret != 0 )) {
+    std::cerr << "Unknown htmlCtxt option " << ret << std::endl;
+  }
   CURLcode code = curl_easy_perform(curl);
 
   /**
@@ -92,9 +98,14 @@ void Derp::Parser::parse_thread(const Derp::Request& request) {
     if (!parser_error_) {
       m_lastupdate_map.erase(request_.getUrl());
       m_lastupdate_map.insert({request_.getUrl(), now});
+
       signal_parsing_finished();
     }
   }
+
+  htmlCtxtReset(ctxt);
+  htmlFreeParserCtxt(ctxt);
+  ctxt = NULL;
 }
 
 size_t Derp::parser_write_cb(void *ptr, size_t size, size_t nmemb, void *userdata) {
@@ -230,7 +241,6 @@ void Derp::Parser::on_start_element(Glib::ustring name, std::map<Glib::ustring, 
     g_free(md5_binary);
     m_images.push_back({curSourceUrl, st.str(), attr_map.find("alt")->second, curxDim, curyDim, curOrigFilename, request_.useOriginalFilename()});
     curSourceUrl = "";
-
   }
 }
 

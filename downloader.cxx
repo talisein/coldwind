@@ -69,7 +69,7 @@ Derp::Downloader::~Downloader() {
   for ( auto iter = m_fos_map.begin(); iter != m_fos_map.end();) {
     code = curl_multi_remove_handle( m_curlm, iter->first );
     if (G_UNLIKELY( code != CURLM_OK )) {
-      std::err << "Error: While removing active handles from curl multi : "
+      std::cerr << "Error: While removing active handles from curl multi : "
 	       << curl_multi_strerror(code) << std::endl;
     } 
     curl_easy_cleanup( iter->first );
