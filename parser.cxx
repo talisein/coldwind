@@ -33,8 +33,8 @@ void Derp::on_xmlError(void* user_data, xmlErrorPtr error) {
 		<< error->code << ". This is probably ok." << std::endl;
     } else {
       std::cerr << "Error: Got unexpected libxml2 error code " 
-		<< error->code << " from domain " << error->domain << " which means: " 
-		<< error->message << std::endl;
+		<< error->code << " from domain " << error->domain
+		<< " which means: " << error->message << std::endl;
       std::cerr << "\tPlease report this error to the developer." << std::endl;
       parser->parser_error_ = true;
     }
@@ -51,12 +51,14 @@ void Derp::Parser::parse_thread(const Derp::Request& request) {
   Glib::DateTime now = Glib::DateTime::create_now_utc();
   
   if (!setup_curl( request_.getUrl() )) {
-    std::cerr << "Error: Couldn't setup curl for fetching " << request_.getUrl() << std::endl;
+    std::cerr << "Error: Couldn't setup curl for fetching " << request_.getUrl()
+	      << std::endl;
     signal_fetching_error();
     return;
   }
 
-  ctxt = htmlCreatePushParserCtxt(sax, this, NULL, 0, NULL, XML_CHAR_ENCODING_UTF8);
+  ctxt = htmlCreatePushParserCtxt(sax, this, NULL, 0, NULL,
+				  XML_CHAR_ENCODING_UTF8);
   if (G_UNLIKELY( ctxt == NULL )) {
     std::cerr << "Unable to create libxml2 HTML context!" << std::endl;
     exit(EXIT_FAILURE);
@@ -85,7 +87,8 @@ void Derp::Parser::parse_thread(const Derp::Request& request) {
       }
       break;
     default:
-      std::cerr << "Error: Curl couldn't fetch the thread: " << curl_easy_strerror(code) << std::endl;
+      std::cerr << "Error: Curl couldn't fetch the thread: "
+		<< curl_easy_strerror(code) << std::endl;
       signal_fetching_error();
     }
   }
@@ -108,7 +111,8 @@ void Derp::Parser::parse_thread(const Derp::Request& request) {
   ctxt = NULL;
 }
 
-size_t Derp::parser_write_cb(void *ptr, size_t size, size_t nmemb, void *userdata) {
+size_t Derp::parser_write_cb(void *ptr, size_t size, size_t nmemb,
+			     void *userdata) {
   Derp::Parser* parser = static_cast<Derp::Parser*>(userdata);
   
   htmlParseChunk(parser->ctxt, static_cast<char*>(ptr), size*nmemb, 0);
@@ -117,7 +121,8 @@ size_t Derp::parser_write_cb(void *ptr, size_t size, size_t nmemb, void *userdat
 
 static bool is_code_ok(CURLcode code, std::string str) {
   if (code != CURLE_OK) {
-    std::cerr << "Error: While setting up curl to fetch the thread in " << str << " : " << curl_easy_strerror(code) << std::endl;
+    std::cerr << "Error: While setting up curl to fetch the thread in " << str
+	      << " : " << curl_easy_strerror(code) << std::endl;
     return false;
   }
   return true;
@@ -142,23 +147,27 @@ bool Derp::Parser::setup_curl(const Glib::ustring& url) {
   ok = ok && is_code_ok(code, "FAILONERROR");
 
   if ( m_lastupdate_map.count(url) > 0 ) {
-    code = curl_easy_setopt(curl, CURLOPT_TIMECONDITION, CURL_TIMECOND_IFMODSINCE);
+    code = curl_easy_setopt(curl, CURLOPT_TIMECONDITION,
+			    CURL_TIMECOND_IFMODSINCE);
     ok = ok && is_code_ok(code, "TIMECONDITION");
 
-    code = curl_easy_setopt(curl, CURLOPT_TIMEVALUE, m_lastupdate_map.find(url)->second.to_unix());
+    code = curl_easy_setopt(curl, CURLOPT_TIMEVALUE,
+			    m_lastupdate_map.find(url)->second.to_unix());
     ok = ok && is_code_ok(code, "TIMEVALUE");
   }
 
   return ok;
 }
 
-void Derp::startElement(void* user_data, const xmlChar* name, const xmlChar** attrs) {
+void Derp::startElement(void* user_data, const xmlChar* name,
+			const xmlChar** attrs) {
   Derp::Parser* parser = (Derp::Parser*) user_data;
   std::map<Glib::ustring, Glib::ustring> attr_map;
 
   int i = 0;
   while (attrs != NULL && attrs[i] != NULL && attrs[i+1] != NULL) {
-    attr_map.insert({reinterpret_cast<const char*>(attrs[i]), reinterpret_cast<const char*>(attrs[i+1])});
+    attr_map.insert({reinterpret_cast<const char*>(attrs[i]),
+	             reinterpret_cast<const char*>(attrs[i+1])});
     i += 2;
   }
   
@@ -166,7 +175,8 @@ void Derp::startElement(void* user_data, const xmlChar* name, const xmlChar** at
     Glib::ustring str( reinterpret_cast<const char*>(name) );
     parser->on_start_element( str, attr_map );
   } catch (std::exception e) {
-    std::cerr << "Error startElement casting to string: " << e.what() << std::endl;
+    std::cerr << "Error startElement casting to string: " << e.what()
+	      << std::endl;
   }
 }
 
@@ -177,7 +187,8 @@ void Derp::onCharacters(void* user_data, const xmlChar* chars, int) {
   try {
     str.assign(reinterpret_cast<const char*>(chars));
   } catch (std::exception e) {
-    std::cerr << "Error casting '" << chars << "' to Glib::ustring: " << e.what() << std::endl;
+    std::cerr << "Error casting '" << chars << "' to Glib::ustring: "
+	      << e.what() << std::endl;
   }
 
   parser->on_characters(str);
@@ -185,7 +196,8 @@ void Derp::onCharacters(void* user_data, const xmlChar* chars, int) {
 
 void Derp::Parser::parse_async(const Derp::Request& request) {
   m_images.clear();
-  Glib::Thread::create( sigc::bind(sigc::mem_fun(this, &Parser::parse_thread), request), false);
+  Glib::Thread::create( sigc::bind(sigc::mem_fun(this, &Parser::parse_thread),
+				   request), false);
 }
 
 void Derp::Parser::on_characters(const Glib::ustring& str) {
@@ -207,7 +219,9 @@ void Derp::Parser::on_characters(const Glib::ustring& str) {
   }
 }
 
-void Derp::Parser::on_start_element(Glib::ustring name, std::map<Glib::ustring, Glib::ustring> attr_map) {
+void Derp::Parser::on_start_element(Glib::ustring name, 
+				    std::map<Glib::ustring,
+					     Glib::ustring> attr_map) {
   // If this element contains an image source url, store it
   if (name.length() == 1 && name.find("a") != Glib::ustring::npos ) {
     if( attr_map.count("href") != 0 ) {
@@ -239,14 +253,19 @@ void Derp::Parser::on_start_element(Glib::ustring name, std::map<Glib::ustring, 
       st << std::setw(2) << static_cast<int>(md5_binary[i]);
     }
     g_free(md5_binary);
-    m_images.push_back({curSourceUrl, st.str(), attr_map.find("alt")->second, curxDim, curyDim, curOrigFilename, request_.useOriginalFilename()});
+    m_images.push_back({curSourceUrl, st.str(), attr_map.find("alt")->second,
+	                curxDim, curyDim, curOrigFilename,
+	                request_.useOriginalFilename()});
     curSourceUrl = "";
   }
 }
 
-int Derp::Parser::request_downloads(Derp::Downloader& downloader, const Derp::Hasher& hasher, const Derp::Request& request) { 
+int Derp::Parser::request_downloads(Derp::Downloader& downloader,
+				    const Derp::Hasher& hasher,
+				    const Derp::Request& request) { 
 
-  m_images.remove_if([&hasher](Derp::Image image) { return hasher.is_downloaded(image); });
+  m_images.remove_if([&hasher](Derp::Image image) 
+		     { return hasher.is_downloaded(image); });
 
   m_images.remove_if([&request](Derp::Image image) { return image < request; });
 
