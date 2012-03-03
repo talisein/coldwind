@@ -1,6 +1,6 @@
 A 4chan thread downloader for the neckbeard weeaboo master race.
 
-Dependancies:
+Dependencies:
 
   * CMake (to build)
   * libcurl

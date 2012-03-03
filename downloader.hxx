@@ -57,7 +57,6 @@ namespace Derp {
 		sigc::connection m_timeout_connection;
 		int m_running_handles;
 		volatile double progress_bytes_;
-		volatile double progress_;
 		double expected_bytes_;
 
 		std::map<CURL*, Glib::RefPtr<Gio::FileOutputStream>> m_fos_map;

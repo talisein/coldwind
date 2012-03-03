@@ -704,7 +704,7 @@ void Derp::Downloader::download_async(const std::list<Derp::Image>& imgs,
 	m_timer.reset();
 	m_timer.start();
 	m_total_bytes = 0;
-	progress_ = 0.0;
+	progress_bytes_ = 0.0;
 
 	const auto slot = sigc::mem_fun(*this, &Derp::Downloader::download_imgs_multi);
 	m_threadPool.push( slot );
