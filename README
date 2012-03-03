@@ -33,7 +33,8 @@ Features:
 
   * Thanks to libcurl, its pretty speedy; when downloading a big
     thread we recycle our connection to the server so in theory we are
-    playing nice. 
+    playing nice. I regularly run an average of 3-3.5 MB/s when 4chan
+    isn't slow on my Comcast connection for large threads.
 
   * Some statistics are printed to stdout about how fast everything is
     being downloaded; hopefully the bottleneck is moot.
