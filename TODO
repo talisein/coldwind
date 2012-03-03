@@ -45,3 +45,13 @@
     [Easy+]
 
   * Oh god, what happens if the thread name box is empty? [Easy]
+
+  * If there are two images in a thread (and relatively close to one
+    another) with the same original filename and we're saving by
+    original filename, one of them will get lost. The collision
+    detection will get the right one on a second try either from the
+    UI or lurker thread. Attempting to Gio::File::query_exists() on
+    the .coldwind extension DOES NOT WORK. I have a branch called
+    'namecollision' that shows this. One approach: use a 'secure'
+    temporary file. After renaming we might have better success on
+    query_exists(). [Medium+]
