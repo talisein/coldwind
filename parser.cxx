@@ -36,8 +36,8 @@ void Derp::on_xmlError(void* user_data, xmlErrorPtr error) {
 	default:
 		if (error->domain == XML_FROM_HTML) {
 			std::cerr << "Warning: Got unexpected libxml2 HTML error code "
-			          << error->code << " (" << error->message << "). This "
-			          << "is probably ok." << std::endl;
+			          << error->code << ". This is probably ok : " 
+			          << error->message;
 		} else {
 			std::cerr << "Error: Got unexpected libxml2 error code "
 			          << error->code << " from domain " << error->domain
