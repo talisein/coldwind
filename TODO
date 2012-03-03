@@ -43,3 +43,5 @@
 
   * Subclass Window and move all the UI stuff out of application
     [Easy+]
+
+  * Oh god, what happens if the thread name box is empty? [Easy]
