@@ -22,6 +22,11 @@ Derp::Parser::~Parser() {
 void Derp::on_xmlError(void* user_data, xmlErrorPtr error) {
 	Derp::Parser* parser = static_cast<Derp::Parser*>(user_data);
 	switch (error->code) {
+	case XML_ERR_INVALID_ENCODING:
+		std::cerr << "Warning: Invalid UTF-8 encoding. I blame moot. "
+		          << "If you're saving by original filename, its going to get"
+		          << " ugly. It can't be helped." << std::endl;
+		break;
 	case XML_ERR_NAME_REQUIRED:
 	case XML_ERR_TAG_NAME_MISMATCH:
 	case XML_ERR_ENTITYREF_SEMICOL_MISSING:
