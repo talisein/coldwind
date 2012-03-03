@@ -5,18 +5,27 @@
 Derp::Image::Image(const Glib::ustring& uri, const std::string& md5hex, const Glib::ustring& size, int xDim, int yDim, const Glib::ustring& origFilename, const bool& useOriginalFilename) : 
   m_uri(uri),
   m_md5(md5hex),
-  m_size(size),
   m_original_filename(origFilename),
   m_x(xDim),
   m_y(yDim),
   useOriginalFilename_(useOriginalFilename)
 {
+	std::stringstream s;
+	std::string units;
+	m_size = 0.0;
+	s << size;
+	s >> m_size >> units;
+	if ( units.find("KB") != std::string::npos ) {
+		m_size *= 1000;
+	} else if ( units.find("MB") != std::string::npos) {
+		m_size *= 1000 * 1000;
+	} // Otherwise units is 'B' and no correction
 }
 
 Derp::Image::Image(const std::string& filepath, const std::string& md5hex) :
   m_uri(filepath),
   m_md5(md5hex),
-  m_size("0 KB"),
+  m_size(0.0),
   m_original_filename(""),
   m_x(0),
   m_y(0),

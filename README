@@ -12,6 +12,8 @@ Features:
   ** If the directory already contains some of those images, they are
      not re-downloaded.
 
+  ** The progress meter is just about byte accurate.
+
   * Specify a minimum dimension size for the pictures
 
   * Specify how long you'd like the app to lurk the thread and keep

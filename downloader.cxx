@@ -114,6 +114,36 @@ static void curl_statistics_check_code(const CURLcode& code) {
 	}
 }
 
+int Derp::downloader_progress_callback(void *clientp,
+                                       double dltotal,
+                                       double dlnow,
+                                       double,         // ultotal
+                                       double) {       // ulnow
+	if (dltotal > 0.0) {
+		Derp::Progress_Info* progress_info = static_cast<Derp::Progress_Info*>(clientp);
+
+
+		if ( dlnow != progress_info->last ) {
+			double diff = dlnow - progress_info->last;
+			double scalar = progress_info->expected / dltotal;
+			progress_info->downloader->increment_progress(diff*scalar);
+			progress_info->last = dlnow;
+		}
+	}
+	
+
+	return 0; // Nonzero aborts transfer
+}
+
+static void progress_cleanup(CURL* curl) {
+	char* progressdata = NULL;
+	Derp::Progress_Info* progress_info;
+	
+	curl_easy_getinfo(curl, CURLINFO_PRIVATE, &progressdata);
+	progress_info = static_cast<Derp::Progress_Info*>(static_cast<void*>(progressdata));
+delete progress_info;
+}
+
 /*
   Called by curl, so it must be in a thread already
 */
@@ -258,6 +288,9 @@ void Derp::Downloader::curl_check_info() {
 				}
 
 				file_ok = finish_file_operations(curl, download_error);
+
+
+				progress_cleanup(curl);
 
 				if (G_LIKELY(!download_error && file_ok)) {
 					collect_statistics(curl);
@@ -520,6 +553,7 @@ bool Derp::Downloader::curl_setup(CURL* curl, const Derp::Image& img) {
 	Glib::RefPtr<Gio::File> p_file;
 	Glib::RefPtr<Gio::FileOutputStream> p_fos;
 	CURLcode code;
+	Derp::Progress_Info* progress_info;
 
 	try {
 		if (!m_target_dir->query_exists()) {
@@ -534,7 +568,7 @@ bool Derp::Downloader::curl_setup(CURL* curl, const Derp::Image& img) {
 			auto info = p_file->query_info();
 			if ( info->get_size() != 0 ) {
 				if (m_request.useOriginalFilename()) {
-					const offset_t last_period = filename.find_last_of(".");
+					const size_t last_period = filename.find_last_of(".");
 					const std::string ext(filename.substr(last_period));
 					const std::string name(filename.substr(0, last_period));
 
@@ -592,6 +626,27 @@ bool Derp::Downloader::curl_setup(CURL* curl, const Derp::Image& img) {
 	if (G_UNLIKELY( !check_curl_code(code, "While setting curl FAILONERROR" )))
 		goto on_setup_failure;
 
+	code = curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);
+	if (G_UNLIKELY( !check_curl_code(code, "While setting curl NOPROGRESS" )))
+		goto on_setup_failure;
+
+	code = curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION,
+	                        &downloader_progress_callback);
+	if (G_UNLIKELY( !check_curl_code(code,
+	                                 "While setting curl PROGRESSFUNCTION" )))
+		goto on_setup_failure;
+	
+	progress_info = new Derp::Progress_Info{this, 0.0, img.getExpectedSize()};
+
+	code = curl_easy_setopt(curl, CURLOPT_PROGRESSDATA, progress_info);
+	if (G_UNLIKELY( !check_curl_code(code, "While setting curl PROGRESSDATA" )))
+		goto on_setup_failure;
+
+	code = curl_easy_setopt(curl, CURLOPT_PRIVATE, progress_info);
+	if (G_UNLIKELY( !check_curl_code(code, "While setting curl PRIVATE" )))
+		goto on_setup_failure;
+
+	
 
 	// At this point, the file and curl handle have been setup successfully.
 	m_fos_map.insert({curl, p_fos});
@@ -609,6 +664,12 @@ bool Derp::Downloader::curl_setup(CURL* curl, const Derp::Image& img) {
 void Derp::Downloader::download_imgs_multi() {
 	Glib::Mutex::Lock lock(curl_mutex);
 	CURLMcode m_code;
+
+	expected_bytes_ = 0.0;
+	std::for_each(m_imgs.begin(), 
+	              m_imgs.end(), 
+	              [&expected_bytes_] (const Derp::Image& img) 
+	              { expected_bytes_ += img.getExpectedSize(); });
 
 	while ( !m_curl_queue.empty() ) {
 		auto it = m_imgs.begin();
@@ -643,6 +704,7 @@ void Derp::Downloader::download_async(const std::list<Derp::Image>& imgs,
 	m_timer.reset();
 	m_timer.start();
 	m_total_bytes = 0;
+	progress_ = 0.0;
 
 	const auto slot = sigc::mem_fun(*this, &Derp::Downloader::download_imgs_multi);
 	m_threadPool.push( slot );

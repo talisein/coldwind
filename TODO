@@ -11,7 +11,7 @@
   * Redirect std::cout and std::cerr to an optional popup message log
     [Hard] (There's actually a Glib API for this in g_log)
 
-  * Capture libxml errors and do the right thing. [Easy] [Partly done]
+  * Capture libxml errors and do the right thing. [Easy] [Mostly done]
 
   * Overlay some lurker info text on the image [Medium]
   ** Or some sort of visual lurker feedback. I dunno. [Hard]

@@ -51,6 +51,7 @@ namespace Derp {
     void on_board_toggled();
     void on_thread_toggled();
 
+	  sigc::connection progressConnection;
     int num_downloading;
     int num_downloaded;
     int num_download_errors;

@@ -171,6 +171,9 @@ void Derp::Application::starting_downloads(int num) {
     num_downloading = num;
     m_image->set(m_killmegif);
     update_progressBar();
+
+    progressConnection = Glib::signal_timeout().connect( sigc::bind_return( sigc::mem_fun(*this, &Derp::Application::update_progressBar), true), 16);
+
   } else {
     std::cerr << "Unexpected call to starting downloads (0)?" << std::endl;
   }
@@ -196,7 +199,6 @@ void Derp::Application::download_error(const Derp::Error& error) {
 
 void Derp::Application::download_finished() {
   num_downloaded++;
-  update_progressBar();
 }
 
 void Derp::Application::downloads_finished(int, const Request& request) {
@@ -210,17 +212,20 @@ void Derp::Application::downloads_finished(int, const Request& request) {
   if (!request.isExpired()) {
     m_lurker.add_async(request);
   }
+  progressConnection.disconnect();
   update_progressBar();
 }
 
 void Derp::Application::update_progressBar() {
-  m_progressBar->set_fraction(static_cast<double>(num_downloaded + num_download_errors) / static_cast<double>(num_downloading));
-  m_progressBar->set_show_text(true);
-  std::stringstream st;
-  st << num_downloaded << " of " << num_downloading << " images downloaded";
-  if (num_download_errors > 0) 
-    st << ", " << num_download_errors << " error";
-  if (num_download_errors > 1)
-    st << "s";
-  m_progressBar->set_text(st.str());
+	//m_progressBar->set_fraction(static_cast<double>(num_downloaded + num_download_errors) / static_cast<double>(num_downloading));
+	m_progressBar->set_fraction( m_manager.getProgress() );
+
+	m_progressBar->set_show_text(true);
+	std::stringstream st;
+	st << num_downloaded << " of " << num_downloading << " images downloaded";
+	if (num_download_errors > 0) 
+		st << ", " << num_download_errors << " error";
+	if (num_download_errors > 1)
+		st << "s";
+	m_progressBar->set_text(st.str());
 }

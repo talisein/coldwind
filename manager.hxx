@@ -25,6 +25,7 @@ namespace Derp {
     sigc::signal<void, int> signal_starting_downloads;
     sigc::signal<void, const Derp::Error&> signal_download_error;
 
+	  double getProgress() { return m_downloader.getProgress(); };
   private:
 
     void parsing_finished();

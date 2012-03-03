@@ -25,12 +25,14 @@ void Derp::on_xmlError(void* user_data, xmlErrorPtr error) {
 	case XML_ERR_NAME_REQUIRED:
 	case XML_ERR_TAG_NAME_MISMATCH:
 	case XML_ERR_ENTITYREF_SEMICOL_MISSING:
+	case XML_ERR_INVALID_DEC_CHARREF:
 		// Ignore
 		break;
 	default:
 		if (error->domain == XML_FROM_HTML) {
 			std::cerr << "Warning: Got unexpected libxml2 HTML error code "
-			          << error->code << ". This is probably ok." << std::endl;
+			          << error->code << " (" << error->message << "). This "
+			          << "is probably ok." << std::endl;
 		} else {
 			std::cerr << "Error: Got unexpected libxml2 error code "
 			          << error->code << " from domain " << error->domain
@@ -255,9 +257,21 @@ void Derp::Parser::on_start_element(Glib::ustring name,
 			st << std::setw(2) << static_cast<int>(md5_binary[i]);
 		}
 		g_free(md5_binary);
-		m_images.push_back({curSourceUrl, st.str(), attr_map.find("alt")->second,
-					curxDim, curyDim, curOrigFilename,
-					request_.useOriginalFilename()});
+
+
+		Glib::ustring size = attr_map.find("alt")->second;
+		size_t pos = size.rfind(",");
+		if (pos != Glib::ustring::npos) {
+			size.erase(0, pos + 2);
+		}
+
+		m_images.push_back({curSourceUrl,
+					        st.str(),
+					        size,
+					        curxDim,
+					        curyDim,
+					        curOrigFilename,
+					        request_.useOriginalFilename()});
 		curSourceUrl = "";
 	}
 }
