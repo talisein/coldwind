@@ -1,5 +1,12 @@
 A 4chan thread downloader for the neckbeard weeaboo master race.
 
+Dependancies:
+
+  * CMake (to build)
+  * libcurl
+  * libxml2
+  * gtkmm3
+
 Features: 
 
   * Downloads a given thread to the target directory. 
