@@ -48,7 +48,7 @@ cmake_policy(SET CMP0011 NEW)
 set(CMAKE_BUILD_TYPE release)
 set(CMAKE_CXX_FLAGS "-std=c++0x")
 set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -O0 -Wall -Wextra -pedantic" )
-set(CMAKE_CXX_FLAGS_RELEASE "-Os")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 find_package(CURL REQUIRED)
 set(LIBS ${LIBS} ${CURL_LIBRARIES})
