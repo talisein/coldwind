@@ -1,5 +1,6 @@
 cmake_minimum_required (VERSION 2.6)
 project (Coldwind CXX)
+cmake_policy(SET CMP0011 NEW)
 
 Include(CPack)
 
@@ -13,7 +14,7 @@ endif()
 
 # The version number
 set (Coldwind_VERSION_MAJOR 0)
-set (Coldwind_VERSION_MINOR 1)
+set (Coldwind_VERSION_MINOR 4)
 
 # check libs and packages (headers + lib)
 set(Coldwind_glade overEngineering.glade)
@@ -36,16 +37,10 @@ configure_file (
   "config.h"
   )
 
-# std C libraries
-#find_package(stdlibs REQUIRED)
-
-# libpthread with pthread.h
-#find_package(pthread REQUIRED)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
-cmake_policy(SET CMP0011 NEW)
 
-set(CMAKE_BUILD_TYPE release)
+set(CMAKE_BUILD_TYPE debug)
 set(CMAKE_CXX_FLAGS "-std=c++0x")
 set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -O0 -Wall -Wextra -pedantic" )
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
