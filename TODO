@@ -55,3 +55,9 @@
     'namecollision' that shows this. One approach: use a 'secure'
     temporary file. After renaming we might have better success on
     query_exists(). [Medium+]
+
+  * The thread filename completer got wonky on me once. What's the
+    deal? Dunno. Maybe the async method never finished or something.
+
+  * If the thread fetching fails, we currently get locked up in the
+    lurker.
