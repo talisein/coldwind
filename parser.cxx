@@ -31,6 +31,8 @@ void Derp::on_xmlError(void* user_data, xmlErrorPtr error) {
 	case XML_ERR_TAG_NAME_MISMATCH:
 	case XML_ERR_ENTITYREF_SEMICOL_MISSING:
 	case XML_ERR_INVALID_DEC_CHARREF:
+	case XML_ERR_LTSLASH_REQUIRED:
+	case XML_ERR_GT_REQUIRED:
 		// Ignore
 		break;
 	default:
