@@ -24,9 +24,6 @@ Derp::Request::Request(const Glib::ustring& thread_url,
 {
 }
 
-Derp::Request::Request() {
-}
-
 void Derp::Request::decrementMinutes() {
   minutes_--;
 }
