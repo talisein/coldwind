@@ -7,10 +7,10 @@ Include(CPack)
 if(WIN32)
   set(COLDWIND_WIN32 "true")
   set(COLDWIND_WIN32_DEFINE "1")
-else()
+else(WIN32)
   set(COLDWIND_WIN32 "false")
   set(COLDWIND_WIN32_DEFINE "0")
-endif()
+endif(WIN32)
 
 # The version number
 set (Coldwind_VERSION_MAJOR 0)
@@ -45,6 +45,7 @@ set(CMAKE_CXX_FLAGS "-std=c++0x")
 set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -O0 -Wall -Wextra -pedantic" )
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
+
 find_package(CURL REQUIRED)
 set(LIBS ${LIBS} ${CURL_LIBRARIES})
 set(INCLUDES ${INCLUDES} ${CURL_INCLUDE_DIRS})
@@ -58,13 +59,11 @@ find_package(GTK3 3.0 REQUIRED gtk gtkmm gthread)
 set(LIBS ${LIBS} ${GTK3_LIBRARIES})
 set(INCLUDES ${INCLUDES} ${GTK3_INCLUDE_DIRS})
 
-
 add_definitions( -D_GNU_SOURCE -DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED -DGSEAL_ENABLE )
 
-include_directories(
-  ${GTK3_INCLUDE_DIRS} ${LIBXML2_INCLUDE_DIR} ${CURL_INCLUDE_DIRS})
+include_directories( ${INCLUDES} )
 
-add_executable(coldwind main.cxx parser.cxx application.cxx hasher.cxx downloader.cxx image.cxx lurker.cxx manager.cxx request.cxx)
+add_executable(coldwind main.cxx parser.cxx application.cxx hasher.cxx downloader.cxx image.cxx lurker.cxx manager.cxx request.cxx window.cxx window_gtk3.cxx windowimpl.cxx)
 
 target_link_libraries(coldwind ${LIBS})
 

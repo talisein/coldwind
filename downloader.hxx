@@ -41,7 +41,7 @@ namespace Derp {
 		Glib::Dispatcher signal_download_finished;
 		Glib::Dispatcher signal_download_error;
 
-		double getProgress() { return progress_bytes_ / expected_bytes_; };
+		double getProgress() const { return progress_bytes_ / expected_bytes_; };
 	private:
 		Downloader& operator=(const Downloader&) = delete; // Evil func
 		Downloader(const Downloader&) = delete; // Evil func
