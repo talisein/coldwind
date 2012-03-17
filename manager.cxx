@@ -5,6 +5,8 @@ Derp::Manager::Manager() :
 {
 	m_parser.signal_parsing_finished.connect(sigc::mem_fun(*this, &Derp::Manager::parsing_finished));
 	m_parser.signal_thread_404.connect(sigc::mem_fun(*this, &Derp::Manager::thread_404));
+	m_parser.signal_fetching_error.connect(sigc::mem_fun(*this, &Derp::Manager::thread_fetching_error));
+	m_parser.signal_parsing_error.connect(sigc::mem_fun(*this, &Derp::Manager::thread_parsing_error));
 	m_hasher.signal_hashing_finished.connect(sigc::mem_fun(*this, &Derp::Manager::hashing_finished));
 	m_downloader.signal_download_finished.connect(sigc::mem_fun(*this, &Derp::Manager::download_finished));
 	m_downloader.signal_download_error.connect(sigc::mem_fun(*this, &Derp::Manager::download_error));
@@ -39,6 +41,16 @@ void Derp::Manager::thread_404() {
 	// TODO: Need to manage state better
 }
 
+void Derp::Manager::thread_fetching_error() {
+	is_working = false;
+	signal_download_error(Derp::Error::THREAD_CURL_ERROR);
+}
+
+void Derp::Manager::thread_parsing_error() {
+	is_working = false;
+	signal_download_error(Derp::Error::THREAD_PARSE_ERROR);
+}
+
 void Derp::Manager::try_download() {
 	if ( !(is_parsing || is_hashing) ) {
 		num_errors = 0;
@@ -62,7 +74,7 @@ void Derp::Manager::download_finished() {
 
 void Derp::Manager::download_error() {
 	num_errors++;
-	signal_download_error(Derp::Error::CURL_ERROR);
+	signal_download_error(Derp::Error::IMAGE_CURL_ERROR);
 	if (num_downloading == (num_downloaded + num_errors)) {
 		done();
 	}

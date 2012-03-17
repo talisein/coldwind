@@ -12,7 +12,9 @@ namespace Derp {
 	enum Error {
 		THREAD_404,
 		DUPLICATE_FILE,
-		CURL_ERROR
+		IMAGE_CURL_ERROR,
+		THREAD_CURL_ERROR,
+		THREAD_PARSE_ERROR
 	};
 
 	class Manager {
@@ -35,6 +37,8 @@ namespace Derp {
 		void download_error();
 		void done();
 		void thread_404();
+		void thread_fetching_error();
+		void thread_parsing_error();
 		bool is_working;
 		bool is_hashing, is_parsing;
 		int num_downloading, num_downloaded, num_errors;

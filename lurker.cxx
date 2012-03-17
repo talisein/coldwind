@@ -4,7 +4,7 @@
 
 Derp::Lurker::Lurker()
 {
-  m_manager_connection = m_manager.signal_all_downloads_finished.connect( sigc::mem_fun(*this, &Derp::Lurker::iteration_finish) );
+  m_manager_connection = m_manager.signal_all_downloads_finished.connect( sigc::mem_fun(*this, &Derp::Lurker::downloads_finished) );
   m_manager.signal_download_error.connect( sigc::mem_fun(*this, &Derp::Lurker::download_error) );
 }
 
@@ -46,7 +46,7 @@ void Derp::Lurker::iteration_next() {
   std::cout << "Lurking " << iter->getUrl() << std::endl;
   if (!m_manager.download_async(*iter)) {
     std::cerr << "Error: Lurker tried to start a download of thread, but the manager is busy." << std::endl;
-    iteration_finish(0, *iter);
+    iteration_finish(0);
   } 
 }
 
@@ -69,12 +69,25 @@ void Derp::Lurker::download_error(const Derp::Error& error) {
       iteration_next();
     }
     break;
+  case DUPLICATE_FILE:
+  case IMAGE_CURL_ERROR:
+	  break;
+  case THREAD_CURL_ERROR:
+  case THREAD_PARSE_ERROR:
+	  std::cout << "Lurker caught a thread error." << std::endl;
+	  iteration_finish(0);
   default:
+	  std::cout << "Lurker caught unknown error." << std::endl;
+	  iteration_finish(0);
     break;
   }
 }
 
-void Derp::Lurker::iteration_finish(int num_downloaded, const Derp::Request&) {
+void Derp::Lurker::downloads_finished(int num_downloaded, const Derp::Request&) {
+	iteration_finish(num_downloaded);
+}
+
+void Derp::Lurker::iteration_finish(int num_downloaded) {
   iter->decrementMinutes();
   total_downloaded += num_downloaded;
 

@@ -127,7 +127,6 @@ void Derp::Window_Gtk3::goButton_click() {
     goButton_->set_active(false);
 
     num_download_errors_ = 0;
-    std::cerr << "WinGtk3: Sending signal_go" << std::endl;
     bool is_accepted = signal_new_request({ urlEntry_->get_text(),
 	  fileChooserButton_->get_file(),
 	  threadFolderEntry_->get_text(),
@@ -139,7 +138,6 @@ void Derp::Window_Gtk3::goButton_click() {
 	  originalFilenameCheckbox_->get_active(),
 	  lurk404Checkbox_->get_active()
 	  });
-    std::cerr << "WinGtk3: is_accepted is " << is_accepted << std::endl;
     if (is_accepted) {
       goButton_->set_sensitive(false);
     }

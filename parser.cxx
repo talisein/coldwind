@@ -114,6 +114,8 @@ void Derp::Parser::parse_thread(const Derp::Request& request) {
 			m_lastupdate_map.insert({request_.getUrl(), now});
 
 			signal_parsing_finished();
+		} else {
+			signal_parsing_error();
 		}
 	}
 

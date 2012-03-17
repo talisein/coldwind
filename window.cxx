@@ -59,7 +59,6 @@ bool Derp::Window::startManager(const Request& request) {
     if (!is_accepted) {
 	    timer_.stop();
     }
-    std::cerr << "Window: is_accepted is " << is_accepted << std::endl;
 
     return is_accepted;
 }
