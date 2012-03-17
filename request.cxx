@@ -20,7 +20,8 @@ Derp::Request::Request(const Glib::ustring& thread_url,
   useBoardSubdir_(useBoardSubdir),
   useThreadSubdir_(useThreadSubdir),
   useOriginalFilename_(useOriginalFilename),
-  lurkTo404_(lurkTo404)
+  lurkTo404_(lurkTo404),
+  is404_(false)
 {
 }
 
@@ -29,10 +30,18 @@ void Derp::Request::decrementMinutes() {
 }
 
 bool Derp::Request::isExpired() const {
-  if ( !lurkTo404_)
-    return minutes_ <= 0;
-  else
-    return false;
+	if (is404_)
+		return true;
+
+	if ( !lurkTo404_) {
+		return minutes_ <= 0;
+	}
+
+	return false;
+}
+
+void Derp::Request::mark404() {
+	is404_ = true;
 }
 
 Glib::RefPtr<Gio::File> Derp::Request::getHashDirectory() const {

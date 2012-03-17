@@ -29,6 +29,7 @@ namespace Derp {
 
 		bool isExpired() const;
 		void decrementMinutes();
+		void mark404();
 		bool useOriginalFilename() const;
 
 	private:
@@ -42,6 +43,7 @@ namespace Derp {
 		bool useThreadSubdir_;
 		bool useOriginalFilename_;
 		bool lurkTo404_;
+		bool is404_;
 
 		friend bool operator<(const Derp::Image& image, 
 		                      const Derp::Request& request);

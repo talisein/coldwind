@@ -54,21 +54,10 @@ void Derp::Lurker::download_error(const Derp::Error& error) {
   auto iter_copy(iter);
   switch (error) {
   case THREAD_404:
-    std::cout << "Lurker caught thread 404 on " << iter->getUrl() << std::endl;
-    iter++;
-    m_list.erase(iter_copy);
-    if (iter == m_list.end()) {
-      if ( total_downloaded > 0 ) {
-	std::cout << "Lurker downloaded " << total_downloaded << " images total\n";
-      }
-
-      m_list.remove_if([](const Request& data) { return data.isExpired(); });
-      
-      m_list_lock.unlock();
-    } else {
-      iteration_next();
-    }
-    break;
+	  iter->mark404();
+	  std::cout << "Lurker caught thread 404 on " << iter->getUrl() << std::endl;
+	  iteration_finish(0);
+	  break;
   case DUPLICATE_FILE:
   case IMAGE_CURL_ERROR:
 	  break;
