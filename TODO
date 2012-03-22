@@ -58,6 +58,9 @@
 
   * The thread filename completer got wonky on me once. What's the
     deal? Dunno. Maybe the async method never finished or something.
+  ** It seems like if you use a FileChooser in a different GTK
+     program, the chosen file is silently propigated to
+     Stormee. That's some BS!
 
   * If the thread fetching fails, we currently get locked up in the
-    lurker.
+    lurker. [Maybe Solved]
