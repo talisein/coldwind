@@ -1,5 +1,7 @@
 #ifndef WINDOW_HXX
 #define WINDOW_HXX
+
+#include <memory>
 #include <sigc++/connection.h>
 #include <glibmm/timer.h>
 #include <gtkmm/window.h>
@@ -12,16 +14,17 @@ namespace Derp {
 	public:
 		Window();
 
-		Gtk::Window& run();
+		void run();
 		sigc::signal<void, const Request&> signal_new_request;
 
 	protected:
-		static Derp::WindowImpl* getWindowImpl();
+		static std::unique_ptr<Derp::WindowImpl> getWindowImpl();
 
 	private:
 		const int PROGRESS_FPS;
 
 		Derp::WindowImpl* windowImpl_;
+		std::unique_ptr<Derp::WindowImpl> uwindowImpl_;
 
 		Glib::Timer timer_;
 		Derp::Manager manager_;

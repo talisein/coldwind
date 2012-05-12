@@ -15,9 +15,9 @@ namespace Derp {
 		virtual void download_finished() = 0;
 		virtual void downloads_finished(int num, const Request& request) = 0;
 		virtual void download_error(const Derp::Error&) = 0;
-
 		virtual void update_progress(double) = 0;
-		
+		virtual void run() = 0;
+
 	protected:
 		WindowImpl() = default;
 

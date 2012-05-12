@@ -1,4 +1,3 @@
-// Derp
 #ifndef APPLICATION_HXX
 #define APPLICATION_HXX
 #include <gtkmm/main.h>

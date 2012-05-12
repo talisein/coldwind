@@ -10,6 +10,9 @@ Derp::Image::Image(const Glib::ustring& uri, const std::string& md5hex, const Gl
   m_y(yDim),
   useOriginalFilename_(useOriginalFilename)
 {
+	if (m_uri.find("http") == Glib::ustring::npos)
+		m_uri.insert(0, "http:");
+
 	std::stringstream s;
 	std::string units;
 	m_size = 0.0;

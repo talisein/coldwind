@@ -13,5 +13,5 @@ Derp::Application::Application(int argc, char* argv[]) :
 }
 
 void Derp::Application::run() {
-	m_kit.run(window_.run());
+	m_kit.run();
 }

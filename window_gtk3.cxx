@@ -55,6 +55,10 @@ Derp::Window_Gtk3::Window_Gtk3(BaseObjectType* cobject,
     on_thread_toggled(); // Show/Hide the entryCompletion based on xml
 }
 
+Derp::Window_Gtk3::~Window_Gtk3() {
+	std::cerr << "In Window_Gtk3 destructor." << std::endl;
+}
+
 void Derp::Window_Gtk3::on_url_entry(guint, const gchar*, guint) {
   update_thread_dir_completer();
 }
@@ -142,6 +146,16 @@ void Derp::Window_Gtk3::goButton_click() {
       goButton_->set_sensitive(false);
     }
   }
+}
+
+void Derp::Window_Gtk3::run() {
+	show_all();
+}
+
+void Derp::Window_Gtk3::on_hide() {
+	std::cerr << "Window hiding" << std::endl;
+	Gtk::Window::on_hide();
+	Gtk::Main::quit();
 }
 
 void Derp::Window_Gtk3::starting_downloads(int num) {
