@@ -1,21 +1,21 @@
 #ifndef APPLICATION_HXX
 #define APPLICATION_HXX
-#include <gtkmm/main.h>
+#include <gtkmm/application.h>
 #include "window.hxx"
 #include "lurker.hxx"
 
 namespace Derp {
 
-  class Application {
-  public:
-    explicit Application(int argc, char *argv[]);
-    void run();
+	class Application : public Gtk::Application {
+	public:
+		explicit Application(int argc, char *argv[]);
+		void run();
 
-  private:
-	  const int LURKER_TIMEOUT_SECS;
-	  Gtk::Main m_kit;
-	  Derp::Window window_;
-	  Derp::Lurker lurker_;
-  };
+	private:
+		const int LURKER_TIMEOUT_SECS;
+		void on_my_startup();
+		Derp::Window window_;
+		Derp::Lurker lurker_;
+	};
 }
 #endif

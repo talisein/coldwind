@@ -236,7 +236,7 @@ function(_GTK3_FIND_LIBRARY _var _lib _expand_vc _append_version)
     # Not GTK versions per se but the versions encoded into Windows
     # import libraries (GtkMM 2.14.1 has a gtkmm-vc80-2_4.lib for example)
     # Also the MSVC libraries use _ for . (this is handled below)
-    set(_versions 3.2 3.0 3 2.20 2.18 2.16 2.14 2.12
+    set(_versions 3.4 3.2 3.0 3 2.20 2.18 2.16 2.14 2.12
                   2.10  2.8  2.6  2.4  2.2 2.0
                   1.20 1.18 1.16 1.14 1.12
                   1.10  1.8  1.6  1.4  1.2 1.0)

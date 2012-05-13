@@ -16,21 +16,19 @@ namespace Derp {
 
 		void run();
 		sigc::signal<void, const Request&> signal_new_request;
+		Derp::WindowImpl* getWindowImpl();
 
 	protected:
-		std::unique_ptr<Derp::WindowImpl> getWindowImpl();
+		Derp::WindowImpl* createWindowImpl();
 
 	private:
 		const int PROGRESS_FPS;
 
-		Derp::WindowImpl* windowImpl_;
-		std::unique_ptr<Derp::WindowImpl> uwindowImpl_;
+		Derp::WindowImpl* uwindowImpl_;
 
 		Glib::Timer timer_;
 		Derp::Manager manager_;
 		sigc::connection progressConnection_;
-
-		bool hide_window(GdkEventAny*);
 
 		bool startManager(const Request&);
 		void onStartDownloads(int);

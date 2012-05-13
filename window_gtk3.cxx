@@ -154,7 +154,6 @@ void Derp::Window_Gtk3::run() {
 
 void Derp::Window_Gtk3::on_hide() {
 	Gtk::Window::on_hide();
-	Gtk::Main::quit();
 }
 
 void Derp::Window_Gtk3::starting_downloads(int num) {

@@ -6,32 +6,35 @@
 
 Derp::Window::Window() 
 	: PROGRESS_FPS(60),
-	  uwindowImpl_(getWindowImpl()),
+	  uwindowImpl_(createWindowImpl()),
 	  timer_(),
 	  manager_(),
 	  progressConnection_()
 {
 	// Signals WindowImpl catches
-	manager_.signal_starting_downloads.connect(sigc::mem_fun(uwindowImpl_.get(), &Derp::WindowImpl::starting_downloads));
-	manager_.signal_download_finished.connect(sigc::mem_fun(uwindowImpl_.get(), &Derp::WindowImpl::download_finished));
-	manager_.signal_all_downloads_finished.connect(sigc::mem_fun(uwindowImpl_.get(), &Derp::WindowImpl::downloads_finished));
-	manager_.signal_download_error.connect(sigc::mem_fun(uwindowImpl_.get(), &Derp::WindowImpl::download_error));
+	manager_.signal_starting_downloads.connect(sigc::mem_fun(uwindowImpl_, &Derp::WindowImpl::starting_downloads));
+	manager_.signal_download_finished.connect(sigc::mem_fun(uwindowImpl_, &Derp::WindowImpl::download_finished));
+	manager_.signal_all_downloads_finished.connect(sigc::mem_fun(uwindowImpl_, &Derp::WindowImpl::downloads_finished));
+	manager_.signal_download_error.connect(sigc::mem_fun(uwindowImpl_, &Derp::WindowImpl::download_error));
 	
 
 	// Signals Window catches
-	uwindowImpl_->signal_new_request.connect( sigc::mem_fun(*this, &Derp::Window::startManager) );
 	manager_.signal_starting_downloads.connect( sigc::mem_fun(*this, &Derp::Window::onStartDownloads) );
 	manager_.signal_all_downloads_finished.connect(sigc::mem_fun(*this, &Derp::Window::onDownloadsFinished));
 }
 
-std::unique_ptr<Derp::WindowImpl> Derp::Window::getWindowImpl() {
+Derp::WindowImpl* Derp::Window::getWindowImpl() {
+	return uwindowImpl_;
+}
+
+Derp::WindowImpl* Derp::Window::createWindowImpl() {
 	// For now, just create GTK3 since that's the only impl
 	Window_Gtk3* impl = nullptr;
 
 	try {
 		auto refBuilder = Gtk::Builder::create_from_file(COLDWIND_GLADE_LOCATION);
 		refBuilder->get_widget_derived("mainWindow", impl);
-		impl->signal_delete_event().connect( sigc::mem_fun(*this, &Derp::Window::hide_window) );
+		impl->signal_new_request.connect( sigc::mem_fun(*this, &Derp::Window::startManager) );
 
 	} catch (const Glib::FileError& ex) {
 		std::cerr << "FileError: " << ex.what() << std::endl;
@@ -44,13 +47,7 @@ std::unique_ptr<Derp::WindowImpl> Derp::Window::getWindowImpl() {
 		exit(EXIT_FAILURE);
 	}
 	
-	impl->run();
-	return std::unique_ptr<Derp::WindowImpl>(impl);
-}
-
-bool Derp::Window::hide_window(GdkEventAny*) {
-	uwindowImpl_.reset();
-	return false;
+	return impl;
 }
 
 void Derp::Window::run() {

@@ -14,7 +14,7 @@ endif(WIN32)
 
 # The version number
 set (Coldwind_VERSION_MAJOR 0)
-set (Coldwind_VERSION_MINOR 4)
+set (Coldwind_VERSION_MINOR 5)
 
 # check libs and packages (headers + lib)
 set(Coldwind_glade overEngineering.glade)
@@ -55,7 +55,7 @@ set(LIBS ${LIBS} ${LIBXML2_LIBRARIES})
 set(INCLUDES ${INCLUDES} ${LIBXML2_INCLUDE_DIR})
 add_definitions( ${LIBXML2_DEFINITIONS} )
 
-find_package(GTK3 3.0 REQUIRED gtk gtkmm gthread)
+find_package(GTK3 3.4 REQUIRED gtk gtkmm gthread)
 set(LIBS ${LIBS} ${GTK3_LIBRARIES})
 set(INCLUDES ${INCLUDES} ${GTK3_INCLUDE_DIRS})
 
