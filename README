@@ -5,7 +5,7 @@ Dependencies:
   * CMake (to build)
   * libcurl
   * libxml2
-  * gtkmm3
+  * gtkmm3 (3.4)
 
 Features: 
 
