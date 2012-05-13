@@ -3,6 +3,7 @@
 #include <algorithm>
 #include "parser.hxx"
 #include "utils.hxx"
+#include <glibmm/convert.h>
 
 Derp::Parser::Parser() : parser_error_(false) {
 	sax = (htmlSAXHandlerPtr) calloc(1, sizeof(xmlSAXHandler));
@@ -193,13 +194,21 @@ void Derp::startElement(void* user_data, const xmlChar* name,
 	}
 }
 
-void Derp::onCharacters(void* user_data, const xmlChar* chars, int) {
+void Derp::onCharacters(void* user_data, const xmlChar* chars, int size) {
 	Derp::Parser* parser = static_cast<Derp::Parser*>(user_data);
 	Glib::ustring str;
+	std::string locale;
+	std::string locale_str;
+	Glib::get_charset(locale);
 
 	try {
-		str.assign(reinterpret_cast<const char*>(chars));
-	} catch (std::exception e) {
+		// TODO: This is way too much work; xmlChar is already in
+		// UTF-8, we should be able to stick it right in a
+		// ustring. Only problem is everytime I try it barfs.
+		locale_str = Glib::convert(std::string(reinterpret_cast<const char*>(chars),size), locale, "UTF-8");
+		str = Glib::locale_to_utf8(locale_str);
+
+	} catch (Glib::ConvertError e) {
 		std::cerr << "Error casting '" << chars << "' to Glib::ustring: "
 		          << e.what() << std::endl;
 	}
@@ -255,8 +264,8 @@ void Derp::Parser::on_start_element(Glib::ustring name,
 	// 4chan gives us the md5 in Base64, whereas Glib computes it as a
 	// hex string.  So, we convert the base64 to hex here and insert it
 	// into the attribute map
-	if (attr_map.count("md5") != 0) {
-		Glib::ustring md5_base64(attr_map.find("md5")->second);
+	if (attr_map.count("data-md5") != 0) {
+		Glib::ustring md5_base64(attr_map.find("data-md5")->second);
 		gsize len = 0;
 		guchar* md5_binary = g_base64_decode(md5_base64.c_str(), &len);
 		std::stringstream st;
