@@ -1,5 +1,6 @@
 #include "request.hxx"
 #include <iostream>
+#include <glibmm/convert.h>
 
 Derp::Request::Request(const Glib::ustring& thread_url,
 		       const Glib::RefPtr<Gio::File>& target_directory,

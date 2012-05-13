@@ -56,7 +56,7 @@ Derp::Window_Gtk3::Window_Gtk3(BaseObjectType* cobject,
 }
 
 Derp::Window_Gtk3::~Window_Gtk3() {
-	std::cerr << "In Window_Gtk3 destructor." << std::endl;
+	on_hide();
 }
 
 void Derp::Window_Gtk3::on_url_entry(guint, const gchar*, guint) {
@@ -153,7 +153,6 @@ void Derp::Window_Gtk3::run() {
 }
 
 void Derp::Window_Gtk3::on_hide() {
-	std::cerr << "Window hiding" << std::endl;
 	Gtk::Window::on_hide();
 	Gtk::Main::quit();
 }

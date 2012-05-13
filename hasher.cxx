@@ -3,6 +3,8 @@
 
 #include "hasher.hxx"
 #include <glibmm/thread.h>
+#include <glibmm/convert.h>
+#include <glibmm/checksum.h>
 #include <iostream>
 #include "config.h"
 

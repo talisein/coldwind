@@ -1,6 +1,7 @@
 #include "downloader.hxx"
 #include <iostream>
 #include <glibmm/thread.h>
+#include <glibmm/miscutils.h>
 #include <iomanip>
 #include "config.h"
 
@@ -664,12 +665,14 @@ bool Derp::Downloader::curl_setup(CURL* curl, const Derp::Image& img) {
 void Derp::Downloader::download_imgs_multi() {
 	Glib::Mutex::Lock lock(curl_mutex);
 	CURLMcode m_code;
-
+	double bytes = 0.0;
 	expected_bytes_ = 0.0;
+	
 	std::for_each(m_imgs.begin(), 
 	              m_imgs.end(), 
-	              [&expected_bytes_] (const Derp::Image& img) 
-	              { expected_bytes_ += img.getExpectedSize(); });
+	              [&bytes] (const Derp::Image& img) 
+	              { bytes += img.getExpectedSize(); });
+	expected_bytes_ = bytes;
 
 	while ( !m_curl_queue.empty() ) {
 		auto it = m_imgs.begin();
@@ -701,6 +704,7 @@ void Derp::Downloader::download_async(const std::list<Derp::Image>& imgs,
 	m_request = request;
 	m_imgs = imgs;
 	m_target_dir = request.getDirectory();
+
 	m_timer.reset();
 	m_timer.start();
 	m_total_bytes = 0;

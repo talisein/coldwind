@@ -6,6 +6,7 @@
 #include <glibmm/ustring.h>
 #include <glibmm/dispatcher.h>
 #include <glibmm/threadpool.h>
+#include <glibmm/thread.h>
 #include <giomm/file.h>
 #include "image.hxx"
 #include "request.hxx"

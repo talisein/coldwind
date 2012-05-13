@@ -4,6 +4,7 @@
 #include <queue>
 #include <list>
 #include <set>
+#include <map>
 #include <curl/curl.h>
 #include <giomm/file.h>
 #include <glibmm/ustring.h>
@@ -11,6 +12,7 @@
 #include <glibmm/threadpool.h>
 #include <glibmm/iochannel.h>
 #include <glibmm/timer.h>
+#include <glibmm/thread.h>
 #include "image.hxx"
 #include "request.hxx"
 

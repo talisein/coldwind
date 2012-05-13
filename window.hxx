@@ -18,7 +18,7 @@ namespace Derp {
 		sigc::signal<void, const Request&> signal_new_request;
 
 	protected:
-		static std::unique_ptr<Derp::WindowImpl> getWindowImpl();
+		std::unique_ptr<Derp::WindowImpl> getWindowImpl();
 
 	private:
 		const int PROGRESS_FPS;
@@ -29,6 +29,8 @@ namespace Derp {
 		Glib::Timer timer_;
 		Derp::Manager manager_;
 		sigc::connection progressConnection_;
+
+		bool hide_window(GdkEventAny*);
 
 		bool startManager(const Request&);
 		void onStartDownloads(int);

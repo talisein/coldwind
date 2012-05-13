@@ -7,6 +7,7 @@
 #include <map>
 #include <glibmm/ustring.h>
 #include <glibmm/datetime.h>
+#include <glibmm/thread.h>
 #include "image.hxx"
 #include "downloader.hxx"
 #include "hasher.hxx"
