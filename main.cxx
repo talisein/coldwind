@@ -1,6 +1,5 @@
 // Derp
 
-#include <glibmm/thread.h>
 #include "application.hxx"
 #include <curl/curl.h>
 #include <libxml/parser.h>
@@ -15,8 +14,6 @@ int main (int argc, char *argv[])
   }
 
   LIBXML_TEST_VERSION
-
-  if(!Glib::thread_supported()) Glib::thread_init();
 
   Derp::Application app(argc, argv);
   app.run();
