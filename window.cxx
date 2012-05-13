@@ -32,7 +32,10 @@ Derp::WindowImpl* Derp::Window::createWindowImpl() {
 	Window_Gtk3* impl = nullptr;
 
 	try {
-		auto refBuilder = Gtk::Builder::create_from_file(COLDWIND_GLADE_LOCATION);
+
+		GtkBuilder* cbuilder = gtk_builder_new();
+		gtk_builder_add_from_resource(cbuilder, "/org/talinet/coldwind/overEngineering.glade", NULL);
+		Glib::RefPtr<Gtk::Builder> refBuilder = Glib::wrap(cbuilder);
 		refBuilder->get_widget_derived("mainWindow", impl);
 		impl->signal_new_request.connect( sigc::mem_fun(*this, &Derp::Window::startManager) );
 

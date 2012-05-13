@@ -456,6 +456,9 @@ foreach(_GTK3_component ${GTK3_FIND_COMPONENTS})
         _GTK3_FIND_INCLUDE_DIR(GTK3_PANGO_INCLUDE_DIR pango/pango.h)
         _GTK3_FIND_LIBRARY    (GTK3_PANGO_LIBRARY pango false true)
 
+	    _GTK3_FIND_INCLUDE_DIR(GTK3_GIO_INCLUDE_DIR gio/gio.h)
+        _GTK3_FIND_LIBRARY    (GTK3_GIO_LIBRARY gio false true)
+
         _GTK3_FIND_INCLUDE_DIR(GTK3_ATK_INCLUDE_DIR atk/atk.h)
         _GTK3_FIND_LIBRARY    (GTK3_ATK_LIBRARY atk false true)
 
@@ -543,6 +546,9 @@ foreach(_GTK3_component ${GTK3_FIND_COMPONENTS})
 
             GTK3_GDK_INCLUDE_DIR
             GTK3_GDK_LIBRARY
+
+            GTK3_GIO_INCLUDE_DIR
+            GTK3_GIO_LIBRARY
         )
     elseif(_GTK3_component STREQUAL "gtkmm")
         FIND_PACKAGE_HANDLE_STANDARD_ARGS(GTK3_${_COMPONENT_UPPER} "Some or all of the gtkmm libraries were not found."

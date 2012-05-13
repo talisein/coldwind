@@ -3,11 +3,6 @@
 
 #include <string>
 
-const std::string COLDWIND_GLADE_LOCATION = "@Coldwind_glade_location@/@Coldwind_glade@";
-const std::string COLDWIND_FANGPNG_LOCATION = "@Coldwind_fangpng_location@/@Coldwind_fangpng@";
-const std::string COLDWIND_KILLMEGIF_LOCATION = "@Coldwind_killmegif_location@/@Coldwind_killmegif@";
-const std::string COLDWIND_ERRORGIF_LOCATION = "@Coldwind_errorgif_location@/@Coldwind_errorgif@";
-
 constexpr bool COLDWIND_IS_WIN32 = @COLDWIND_WIN32@;
 #define COLDWIND_WINDOWS @COLDWIND_WIN32_DEFINE@
 

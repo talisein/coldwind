@@ -1,5 +1,17 @@
 #include "window_gtk3.hxx"
 #include <iostream>
+#include <gdkmm/pixbufanimation.h>
+
+static Glib::RefPtr<Gdk::PixbufAnimation> get_animation_from_resource(const char* path) {
+	auto loader = Gdk::PixbufLoader::create();
+	GBytes* bytes = g_resources_lookup_data(path, G_RESOURCE_LOOKUP_FLAGS_NONE, NULL);
+	gsize bytes_size = 0;
+	gconstpointer bytes_ptr = g_bytes_get_data(bytes, &bytes_size);
+	loader->write(static_cast<const unsigned char*>(bytes_ptr), bytes_size);
+	loader->close();
+	g_bytes_unref(bytes);
+	return loader->get_animation();
+}
 
 Derp::Window_Gtk3::Window_Gtk3(BaseObjectType* cobject,
                                const Glib::RefPtr<Gtk::Builder>& refBuilder) 
@@ -39,10 +51,9 @@ Derp::Window_Gtk3::Window_Gtk3(BaseObjectType* cobject,
     entryCompletion_->set_popup_completion(true);
     threadFolderEntry_->set_completion(entryCompletion_);
 
-    killmegif_ = Gdk::PixbufAnimation::create_from_file(COLDWIND_KILLMEGIF_LOCATION);
-    fangpng_ = Gdk::Pixbuf::create_from_file(COLDWIND_FANGPNG_LOCATION);
-    errorgif_ = Gdk::PixbufAnimation::create_from_file(COLDWIND_ERRORGIF_LOCATION);
-
+    killmegif_ = get_animation_from_resource("/org/talinet/coldwind/KillMe.gif");
+    errorgif_  = get_animation_from_resource("/org/talinet/coldwind/error.gif");
+    fangpng_ = Glib::wrap(gdk_pixbuf_new_from_resource("/org/talinet/coldwind/fang.png", NULL));
     image_->set(fangpng_);
 
     urlEntry_->get_buffer()->signal_inserted_text().connect( sigc::mem_fun(*this, &Derp::Window_Gtk3::on_url_entry) );

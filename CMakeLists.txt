@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 2.6)
-project (Coldwind CXX)
+project (Coldwind CXX C)
 cmake_policy(SET CMP0011 NEW)
 
 Include(CPack)
@@ -17,19 +17,6 @@ set (Coldwind_VERSION_MAJOR 0)
 set (Coldwind_VERSION_MINOR 5)
 
 # check libs and packages (headers + lib)
-set(Coldwind_glade overEngineering.glade)
-set(Coldwind_fangpng fang.png)
-set(Coldwind_killmegif KillMe.gif)
-set(Coldwind_errorgif error.gif)
-set(Coldwind_glade_location "${CMAKE_INSTALL_PREFIX}/share/coldwind")
-set(Coldwind_fangpng_location "${CMAKE_INSTALL_PREFIX}/share/coldwind")
-set(Coldwind_killmegif_location "${CMAKE_INSTALL_PREFIX}/share/coldwind")
-set(Coldwind_errorgif_location "${CMAKE_INSTALL_PREFIX}/share/coldwind")
-
-INSTALL(FILES ${Coldwind_glade} DESTINATION ${Coldwind_glade_location})
-INSTALL(FILES ${Coldwind_fangpng} DESTINATION ${Coldwind_fangpng_location})
-INSTALL(FILES ${Coldwind_killmegif} DESTINATION ${Coldwind_killmegif_location})
-INSTALL(FILES ${Coldwind_errorgif} DESTINATION ${Coldwind_errorgif_location})
 INSTALL(PROGRAMS coldwind DESTINATION bin)
 
 configure_file (
@@ -44,7 +31,6 @@ set(CMAKE_BUILD_TYPE debug)
 set(CMAKE_CXX_FLAGS "-std=c++0x")
 set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -O0 -Wall -Wextra -pedantic" )
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-
 
 find_package(CURL REQUIRED)
 set(LIBS ${LIBS} ${CURL_LIBRARIES})
@@ -63,7 +49,7 @@ add_definitions( -D_GNU_SOURCE -DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED
 
 include_directories( ${INCLUDES} )
 
-add_executable(coldwind main.cxx parser.cxx application.cxx hasher.cxx downloader.cxx image.cxx lurker.cxx manager.cxx request.cxx window.cxx window_gtk3.cxx windowimpl.cxx)
+add_executable(coldwind coldwind_resources.c main.cxx parser.cxx application.cxx hasher.cxx downloader.cxx image.cxx lurker.cxx manager.cxx request.cxx window.cxx window_gtk3.cxx windowimpl.cxx )
 
 target_link_libraries(coldwind ${LIBS})
 
