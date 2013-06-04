@@ -14,22 +14,7 @@
 
 
 namespace Derp {
-	class ThreadDirColumns : public Gtk::TreeModel::ColumnRecord
-	{
-	public:
-		Gtk::TreeModelColumn<Glib::ustring> filename;
-
-		static ThreadDirColumns& getInstance() { static ThreadDirColumns S; return S; }
-		static const Gtk::TreeModelColumn<Glib::ustring>& getFilenameColumn() { return getInstance().filename; }
-	private:
-		ThreadDirColumns() { add(filename); };
-		ThreadDirColumns(const ThreadDirColumns&) = delete;
-		void operator=(const ThreadDirColumns&) = delete;
-	};
-
-
-	// TODO Make class final?
-	class Window_Gtk3 : public WindowImpl, public Gtk::Window {
+	class Window_Gtk3 final : public WindowImpl, public Gtk::Window {
 	public:
 		Window_Gtk3(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& refGlade);
 		virtual ~Window_Gtk3();
@@ -57,7 +42,8 @@ namespace Derp {
 		virtual void on_hide();
 
 		void update_thread_dir_completer();
-		void update_thread_dir_finish(const Glib::RefPtr<Gio::AsyncResult>& result);
+        void update_thread_dir_foreach_info(const Glib::RefPtr<Gio::AsyncResult>&,
+                                            Glib::RefPtr<Gio::FileEnumerator>&);
 		Gtk::Image* image_;
 		Gtk::ProgressBar* progressBar_;
 		Gtk::ToggleButton* goButton_;
@@ -76,8 +62,15 @@ namespace Derp {
 		Glib::RefPtr<Gtk::Adjustment> lurkAdjustment_;
 		Glib::RefPtr<Gtk::Adjustment> xAdjustment_;
 		Glib::RefPtr<Gtk::Adjustment> yAdjustment_;
+
+        class ThreadDirColumns : public Gtk::TreeModel::ColumnRecord {
+        public:
+            Gtk::TreeModelColumn<Glib::ustring> filename;
+            ThreadDirColumns() { add(filename); };
+        } columns_;
 		Glib::RefPtr<Gtk::EntryCompletion> entryCompletion_;
 		Glib::RefPtr<Gtk::ListStore> threadListStore_;
+        Glib::RefPtr<Gio::Cancellable> completion_cancellable_;
 
 	};
 
