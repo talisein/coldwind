@@ -47,11 +47,14 @@ namespace Derp {
         check_code(code);
     }
 
-    void CurlShare::lock(CURL* curl, curl_lock_data data, curl_lock_access access)
+    void
+    CurlShare::lock(CURL* curl, curl_lock_data data, curl_lock_access access)
     {
         auto iter = m_mutex_map.find(data);
         if (iter == m_mutex_map.end()) {
-            auto result = m_mutex_map.insert(std::make_pair(data, std::unique_ptr<Glib::Threads::RWLock>(new Glib::Threads::RWLock())));
+            mutex_p_t mutex(new mutex_t);
+            auto pair = std::make_pair(data, std::move(mutex));
+            auto result = m_mutex_map.insert(std::move(pair));
             iter = result.first;
         }
 
@@ -59,33 +62,43 @@ namespace Derp {
             if (access == CURL_LOCK_ACCESS_SINGLE) {
                 auto map_iter = m_writer_map.find(curl);
                 if (map_iter == m_writer_map.end()) {
-                    auto result = m_writer_map.insert(std::make_pair(curl, std::map<curl_lock_data, std::unique_ptr<Glib::Threads::RWLock::WriterLock>>()));
+                    auto pair = std::make_pair(curl, writer_map_t());
+                    auto result = m_writer_map.insert(std::move(pair));
                     map_iter = result.first;
                 }
                 
-                if (G_LIKELY( map_iter != m_writer_map.end() ))
-                    map_iter->second.insert(std::make_pair(data, std::unique_ptr<Glib::Threads::RWLock::WriterLock>(new Glib::Threads::RWLock::WriterLock(*(iter->second)))));
-                else
+                if (G_LIKELY( map_iter != m_writer_map.end() )) {
+                    writer_lock_p_t lock(new writer_lock_t(*(iter->second)));
+                    auto pair = std::make_pair(data, std::move(lock));
+                    map_iter->second.insert(std::move(pair));
+                } else {
                     g_error("CurlShare Error: Unable to create writer lock map!");
-
+                }
             } else if (access == CURL_LOCK_ACCESS_SHARED) {
                 auto map_iter = m_reader_map.find(curl);
                 if (map_iter == m_reader_map.end()) {
-                    auto result = m_reader_map.insert(std::make_pair(curl, std::map<curl_lock_data, std::unique_ptr<Glib::Threads::RWLock::ReaderLock>>()));
+                    auto pair = std::make_pair(curl, reader_map_t());
+                    auto result = m_reader_map.insert(std::move(pair));
                     map_iter = result.first;
                 }
 
-                if (G_LIKELY( map_iter != m_reader_map.end() ))
-                    map_iter->second.insert(std::make_pair(data, std::unique_ptr<Glib::Threads::RWLock::ReaderLock>(new Glib::Threads::RWLock::ReaderLock(*(iter->second)))));
-                else
+                if (G_LIKELY( map_iter != m_reader_map.end() )) {
+                    reader_lock_p_t lock(new reader_lock_t(*(iter->second)));
+                    auto pair = std::make_pair(data, std::move(lock));
+                    map_iter->second.insert(std::move(pair));
+                } else {
                     g_error("CurlShare Error: Unable to create reader lock map!");
+                }
+            } else {
+                g_error("CurlShare Error: Unexpected lock access type");
             }
         } else {
             g_error("CurlShare Error: Unable to create lock!");
         }
     }
 
-    void CurlShare::unlock(CURL* curl, curl_lock_data data)
+    void
+    CurlShare::unlock(CURL* curl, curl_lock_data data)
     {
         auto write_iter = m_writer_map.find(curl);
         if (write_iter != m_writer_map.end()) {
@@ -234,7 +247,8 @@ namespace Derp {
                 callback_map.erase(iter);
             } else {
                 std::stringstream ss;
-                ss << "Downloaded " << pair.second.url << " but there is no callback to serve.";
+                ss << "Downloaded " << pair.second.url
+                   << " but there is no callback to serve.";
                 signal_error(ss.str()); 
             }
         }
@@ -251,7 +265,8 @@ namespace Derp {
             /* Check for pending requests */
             start_download_from_queue();
         } else {
-            signal_error("Download completed but can't find curl handle to return to queue");
+            signal_error("Download completed but can't find curl handle to "
+                         "return to queue");
         }
     }
 
@@ -382,7 +397,8 @@ namespace Derp {
                 file->remove();
             } catch (Gio::Error e) {
                 std::stringstream ss;
-                ss << "Unable to cleanup corrupt file " << file->get_path() << ": " << e.what();
+                ss << "Unable to cleanup corrupt file " << file->get_path()
+                   << ": " << e.what();
                 signal_internal_error(ss.str());
             }
             signal_download_error();

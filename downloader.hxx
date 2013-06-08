@@ -52,9 +52,18 @@ namespace Derp {
         void unlock(CURL* curl, curl_lock_data data);
 
     private:
-        std::map<curl_lock_data, std::unique_ptr<Glib::Threads::RWLock>> m_mutex_map;
-        std::map<CURL*, std::map<curl_lock_data, std::unique_ptr<Glib::Threads::RWLock::ReaderLock>>> m_reader_map;
-        std::map<CURL*, std::map<curl_lock_data, std::unique_ptr<Glib::Threads::RWLock::WriterLock>>> m_writer_map;
+        typedef Glib::Threads::RWLock                     mutex_t;
+        typedef Glib::Threads::RWLock::ReaderLock         reader_lock_t;
+        typedef Glib::Threads::RWLock::WriterLock         writer_lock_t;
+        typedef std::unique_ptr<mutex_t>                  mutex_p_t;
+        typedef std::unique_ptr<reader_lock_t>            reader_lock_p_t;
+        typedef std::unique_ptr<writer_lock_t>            writer_lock_p_t;
+        typedef std::map<curl_lock_data, reader_lock_p_t> reader_map_t;
+        typedef std::map<curl_lock_data, writer_lock_p_t> writer_map_t;
+
+        std::map<curl_lock_data, mutex_p_t>    m_mutex_map;
+        std::map<CURL*, reader_map_t>          m_reader_map;
+        std::map<CURL*, writer_map_t>          m_writer_map;
         std::unique_ptr<CURLSH, CURLSHDeleter> m_share;
     };
 
