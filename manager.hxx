@@ -27,7 +27,7 @@ namespace Derp {
 		sigc::signal<void, int> signal_starting_downloads;
 		sigc::signal<void, const Derp::Error&> signal_download_error;
 
-		double getProgress() const { return m_downloader.getProgress(); };
+		double getProgress() __attribute__((deprecated)) { return 0.; }
 	private:
 
 		void parsing_finished();

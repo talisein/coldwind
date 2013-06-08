@@ -1,4 +1,5 @@
 #include "manager.hxx"
+#include <iostream>
 
 Derp::Manager::Manager() : 
 	is_working(false)
@@ -10,6 +11,14 @@ Derp::Manager::Manager() :
 	m_hasher.signal_hashing_finished.connect(sigc::mem_fun(*this, &Derp::Manager::hashing_finished));
 	m_downloader.signal_download_finished.connect(sigc::mem_fun(*this, &Derp::Manager::download_finished));
 	m_downloader.signal_download_error.connect(sigc::mem_fun(*this, &Derp::Manager::download_error));
+    m_downloader.signal_download_complete.connect([](const Derp::DownloadInfo& info) {
+            std::cerr << "Download complete: " << info.url << " to "
+                      << info.filename << " at " << info.speed/1024.0
+                      << " KiB/s" << std::endl;
+        });
+    m_downloader.signal_error.connect([](const std::string& msg) {
+            std::cerr << "Download error: " << msg << std::endl;
+        });
 }
 
 bool Derp::Manager::download_async(const Derp::Request& data) {
