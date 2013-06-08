@@ -111,7 +111,9 @@ void Derp::Window_Gtk3::update_thread_dir_foreach_info(const Glib::RefPtr<Gio::A
         }
         enumerator->next_files_async(sigc::bind(sigc::mem_fun(*this, &Derp::Window_Gtk3::update_thread_dir_foreach_info), enumerator));
     } else {
-        enumerator->close();
+        enumerator->close_async(Glib::PRIORITY_DEFAULT, [enumerator](Glib::RefPtr<Gio::AsyncResult>& result) {
+                enumerator->close_finish(result);
+            });
     }
 }
 
