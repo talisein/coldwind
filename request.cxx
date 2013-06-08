@@ -54,11 +54,11 @@ Glib::RefPtr<Gio::File> Derp::Request::getDirectory() const {
   Glib::RefPtr<Gio::File> dir = target_directory_;
 
   if ( useBoardSubdir_ ) {
-    dir = dir->get_child(Glib::filename_from_utf8(getBoard()));
+    dir = dir->get_child_for_display_name(getBoard());
   }
 
   if ( useThreadSubdir_ ) {
-    dir = dir->get_child(Glib::filename_from_utf8(thread_directory_));
+    dir = dir->get_child_for_display_name(thread_directory_);
   }
 
   return dir;
