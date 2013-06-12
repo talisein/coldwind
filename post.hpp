@@ -101,6 +101,10 @@ namespace Derp {
 		std::string get_board() const;
 		void set_thread_id(const gint64 id);
 		gint64 get_thread_id() const;
+        gint get_replies() const;
+        gint get_images() const;
+        bool get_bumplimit() const;
+        bool get_imagelimit() const;
 	};
 
 	void wrap_init();

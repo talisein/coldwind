@@ -35,6 +35,10 @@ enum
   PROP_FILEDELETED,
   PROP_SPOILER,
   PROP_CUSTOM_SPOILER,
+  PROP_REPLIES,
+  PROP_IMAGES,
+  PROP_BUMPLIMIT,
+  PROP_IMAGELIMIT,
   PROP_IMAGE_URL,
   PROP_THUMB_URL,
   PROP_BOARD,
@@ -73,6 +77,10 @@ struct _HorizonPostPrivate
 	gint      is_file_deleted;
 	gint      is_spoiler;
 	gint      custom_spoiler;
+    gint      replies;
+    gint      images;
+    gint      bumplimit;
+    gint      imagelimit;
 	gchar    *image_url;
 	gchar    *thumb_url;
 	gchar    *board;
@@ -186,6 +194,18 @@ horizon_post_set_property (GObject      *object,
 		case PROP_CUSTOM_SPOILER:
 			self->priv->custom_spoiler  = g_value_get_int  (value);
 			break;
+        case PROP_REPLIES:
+            self->priv->replies = g_value_get_int(value);
+            break;
+        case PROP_IMAGES:
+            self->priv->images = g_value_get_int(value);
+            break;
+        case PROP_BUMPLIMIT:
+            self->priv->bumplimit = g_value_get_int(value);
+            break;
+        case PROP_IMAGELIMIT:
+            self->priv->imagelimit = g_value_get_int(value);
+            break;
 		case PROP_IMAGE_URL:
 			g_free(self->priv->image_url);
 			self->priv->image_url = g_value_dup_string (value);
@@ -302,6 +322,18 @@ horizon_post_get_property (GObject    *object,
 		case PROP_CUSTOM_SPOILER:
 			g_value_set_int (value, self->priv->custom_spoiler  );
 			break;
+        case PROP_REPLIES:
+            g_value_set_int(value, self->priv->replies);
+            break;
+        case PROP_IMAGES:
+            g_value_set_int(value, self->priv->images);
+            break;
+        case PROP_BUMPLIMIT:
+            g_value_set_int(value, self->priv->bumplimit);
+            break;
+        case PROP_IMAGELIMIT:
+            g_value_set_int(value, self->priv->imagelimit);
+            break;
 		case PROP_IMAGE_URL:
 			g_value_set_string  (value, horizon_post_get_image_url(self));
 			break;
@@ -591,6 +623,38 @@ horizon_post_class_init (HorizonPostClass *klass)
 	                    99,
 	                    0, /* default value */
 	                    G_PARAM_READWRITE);
+  obj_properties[PROP_REPLIES] =
+	  g_param_spec_int ("replies",
+	                    "Thread Replies",
+	                    "",
+	                    0,
+	                    99999,
+	                    0, /* default value */
+	                    G_PARAM_READWRITE);
+  obj_properties[PROP_IMAGES] =
+	  g_param_spec_int ("images",
+	                    "Thread images",
+	                    "",
+	                    0,
+	                    99999,
+	                    0, /* default value */
+	                    G_PARAM_READWRITE);
+  obj_properties[PROP_BUMPLIMIT] =
+	  g_param_spec_int ("bumplimit",
+	                    "Thread Bumplimit?",
+	                    "",
+	                    0,
+	                    1,
+	                    0, /* default value */
+	                    G_PARAM_READWRITE);
+  obj_properties[PROP_IMAGELIMIT] =
+	  g_param_spec_int ("imagelimit",
+	                    "Thread Imagelimit?",
+	                    "",
+	                    0,
+	                    1,
+	                    0, /* default value */
+	                    G_PARAM_READWRITE);
   obj_properties[PROP_IMAGE_URL] =
 	  g_param_spec_string ("image_url",
 	                       "URL for image",
@@ -771,28 +835,62 @@ gint horizon_post_get_spoiler(const HorizonPost *post) {
 	return post->priv->is_spoiler;
 }
 
+gint horizon_post_get_replies(const HorizonPost *post) {
+    g_return_val_if_fail(HORIZON_IS_POST (post), 0);
+
+    return post->priv->replies;
+}
+
+gint horizon_post_get_images(const HorizonPost *post) {
+    g_return_val_if_fail(HORIZON_IS_POST (post), 0);
+
+    return post->priv->images;
+}
+
+gboolean horizon_post_get_bumplimit(const HorizonPost *post) {
+    g_return_val_if_fail(HORIZON_IS_POST (post), FALSE);
+
+    return post->priv->bumplimit==1?TRUE:FALSE;
+}
+
+gboolean horizon_post_get_imagelimit(const HorizonPost *post) {
+    g_return_val_if_fail(HORIZON_IS_POST (post), FALSE);
+
+    return post->priv->imagelimit==1?TRUE:FALSE;
+}
+
 const gchar *
 horizon_post_get_board (const HorizonPost *post) {
+	g_return_val_if_fail (HORIZON_IS_POST (post), NULL);
+
 	return post->priv->board;
 }
 
 const gchar *
 horizon_post_set_board (HorizonPost *post, const gchar *board) {
+	g_return_val_if_fail (HORIZON_IS_POST (post), NULL);
+
 	return post->priv->board = g_strdup(board);
 }
 
 gint64 
 horizon_post_get_thread_id(const HorizonPost *post) {
+	g_return_val_if_fail (HORIZON_IS_POST (post), 0);
+
 	return post->priv->thread_id;
 }
 
 gint64 
 horizon_post_set_thread_id(HorizonPost *post, const gint64 id) {
+	g_return_val_if_fail (HORIZON_IS_POST (post), 0);
+
 	return post->priv->thread_id = id;
 }
 
 const gchar *
 horizon_post_get_thumb_url (HorizonPost *post) {
+	g_return_val_if_fail (HORIZON_IS_POST (post), NULL);
+
 	if (!post->priv->thumb_url) {
 		g_return_val_if_fail(post->priv->board, NULL);
 
@@ -808,6 +906,8 @@ horizon_post_get_thumb_url (HorizonPost *post) {
 
 void
 horizon_post_set_thumb_url (HorizonPost *post, const gchar* url) {
+	g_return_if_fail (HORIZON_IS_POST (post));
+
 	if (post->priv->thumb_url)
 		g_free(post->priv->thumb_url);
 
@@ -816,6 +916,8 @@ horizon_post_set_thumb_url (HorizonPost *post, const gchar* url) {
 
 const gchar *
 horizon_post_get_image_url (HorizonPost *post) {
+	g_return_val_if_fail (HORIZON_IS_POST (post), NULL);
+
 	if (!post->priv->image_url) {
 		g_return_val_if_fail(post->priv->board, NULL);
 
@@ -832,26 +934,37 @@ horizon_post_get_image_url (HorizonPost *post) {
 
 gboolean
 horizon_post_is_gif(const HorizonPost *post) {
+	g_return_val_if_fail (HORIZON_IS_POST (post), FALSE);
+
 	return g_str_has_suffix(post->priv->ext, "gif");
 }
 
 gboolean
 horizon_post_has_image(const HorizonPost *post) {
+	g_return_val_if_fail (HORIZON_IS_POST (post), FALSE);
+
 	return post->priv->fsize > 0;
 }
 
 gboolean
 horizon_post_is_rendered(const HorizonPost *post) {
+	g_return_val_if_fail (HORIZON_IS_POST (post), FALSE);
+
 	return post->priv->rendered;
 }
 
 gboolean
 horizon_post_set_rendered(HorizonPost *post, gboolean rendered) {
+	g_return_val_if_fail (HORIZON_IS_POST (post), FALSE);
+
 	return post->priv->rendered = rendered;
 }
 
 gboolean
 horizon_post_is_same_post(const HorizonPost *left, const HorizonPost *right) {
+	g_return_val_if_fail (HORIZON_IS_POST (left), FALSE);
+	g_return_val_if_fail (HORIZON_IS_POST (right), FALSE);
+
 	HorizonPostPrivate *lpriv = left->priv;
 	HorizonPostPrivate *rpriv = right->priv;
 
@@ -863,6 +976,9 @@ horizon_post_is_same_post(const HorizonPost *left, const HorizonPost *right) {
 
 gboolean
 horizon_post_is_not_same_post(const HorizonPost *left, const HorizonPost *right) {
+	g_return_val_if_fail (HORIZON_IS_POST (left), FALSE);
+	g_return_val_if_fail (HORIZON_IS_POST (right), FALSE);
+
 	HorizonPostPrivate *lpriv = left->priv;
 	HorizonPostPrivate *rpriv = right->priv;
 
@@ -874,5 +990,7 @@ horizon_post_is_not_same_post(const HorizonPost *left, const HorizonPost *right)
 
 const gchar *
 horizon_post_get_capcode(const HorizonPost *post) {
+	g_return_val_if_fail (HORIZON_IS_POST (post), FALSE);
+
 	return post->priv->capcode;
 }

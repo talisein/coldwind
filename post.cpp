@@ -315,10 +315,25 @@ namespace Derp {
 		horizon_post_set_rendered(gobj(), true);
 	}
 
+    gint Post::get_replies() const {
+        return horizon_post_get_replies(gobj());
+    }
+
+    gint Post::get_images() const {
+        return horizon_post_get_images(gobj());
+    }
+
+    bool Post::get_bumplimit() const {
+        return static_cast<bool>(horizon_post_get_bumplimit(gobj()));
+    }
+
+    bool Post::get_imagelimit() const {
+        return static_cast<bool>(horizon_post_get_imagelimit(gobj()));
+    }
+
 	void wrap_init() {
 		Glib::wrap_register(horizon_post_get_type(), &Derp::Post_Class::wrap_new);
 	}
-	
 }
 
 namespace Glib 
