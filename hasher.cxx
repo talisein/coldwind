@@ -23,12 +23,12 @@ namespace Derp {
         active.send([this]{ save_to_disk(); });
     }
 
-    void Hasher::hash_async(const Request& request, const std::function<void ()>& cb)
+    void Hasher::hash_async(const Request& request, const HasherCallback& cb)
     {
         active.send([this, request, cb]{ hash(request, cb); });
     }
 
-    void Hasher::hash(const Request& request, const std::function<void ()>& cb)
+    void Hasher::hash(const Request& request, const HasherCallback& cb)
     {
         auto base = request.getHashDirectory();
         hash_directory(base);
@@ -54,7 +54,7 @@ namespace Derp {
             board_enumerator->close();
         }
 
-        active.send([this, cb]{ signal_hashed(cb); });
+        active.send([this, cb]{ m_dispatcher(cb); });
     }
 
     void Hasher::hash_directory(const Glib::RefPtr<Gio::File>& dir)
@@ -68,6 +68,7 @@ namespace Derp {
 
             auto file = dir->get_child(info->get_name());
             if (!has_file_path(file->get_path())) {
+                auto path = file->get_path();
                 active.send([this, file]{ hash_file(file); });
             }
         }
@@ -102,13 +103,13 @@ namespace Derp {
     bool Hasher::has_md5(const std::string& md5sum) const
     {
         std::lock_guard<std::mutex> lock(m_table_mutex);
-        return m_hash_table.count(md5sum) > 0;
+        return m_hash_table.find(md5sum) != m_hash_table.end();
     }
 
     bool Hasher::has_file_path(const std::string& path) const
     {
         std::lock_guard<std::mutex> lock(m_table_mutex);
-        return m_filepath_table.count(path) > 0;
+        return m_filepath_table.find(path) != m_filepath_table.end();
     }
 
     namespace {
