@@ -332,7 +332,7 @@ namespace Derp {
     }
 
 	void wrap_init() {
-		Glib::wrap_register(horizon_post_get_type(), &Derp::Post_Class::wrap_new);
+		Glib::wrap_register(horizon_post_get_type(), &Post_Class::wrap_new);
 	}
 }
 
