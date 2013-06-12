@@ -3,31 +3,31 @@
 
 #include <memory>
 #include <queue>
+#include <deque>
 #include <mutex>
-#include <list>
 #include <map>
 #include <curl/curl.h>
 #include <giomm/file.h>
-#include <glibmm/ustring.h>
-#include <glibmm/dispatcher.h>
 #include <glibmm/threads.h>
-#include "image.hxx"
-#include "request.hxx"
-#include "message_dispatcher.hpp"
+#include "callback_dispatcher.hpp"
 #include "active.hpp"
 
 namespace Derp {
     
     /** Statistical information for download.
      */
-    struct DownloadInfo {
-        DownloadInfo() = default;
-        std::string url;      /* The url that was attempted */
-        std::string filename; /* The actual filename saved to, if saved. */
-        bool had_error;       /* True if an error occured */
-        double total_time;    /* Time in seconds */
-        double size;          /* bytes */
-        double speed;         /* bytes per second */
+    struct DownloadResult {
+        DownloadResult() = default;
+        std::string url;        /* The url that was attempted */
+        std::string filename;   /* The actual filename saved to, if saved. */
+
+        bool        had_error;  /* True if an error occured */
+        long        error_code; /* HTTP Code E.g. 404 */
+        std::string error_str;  /* Description of error */
+
+        double      total_time; /* Time in seconds */
+        double      size;       /* bytes */
+        double      speed;      /* bytes per second */
     };
 
     /** libcurl wrapper to share cookies/ssl sessions between
@@ -48,13 +48,17 @@ namespace Derp {
         };
     public:
         CurlShare();
-        void lock(CURL* curl, curl_lock_data data, curl_lock_access);
+        void lock(CURL* curl, curl_lock_data data, curl_lock_access access);
         void unlock(CURL* curl, curl_lock_data data);
 
     private:
+        /* In C++14: std::mutex */
         typedef Glib::Threads::RWLock                     mutex_t;
+        /* In C++14: std::shared_lock<std::mutex> */
         typedef Glib::Threads::RWLock::ReaderLock         reader_lock_t;
+        /* In C++14: std::lock_guard<std::mutex> */
         typedef Glib::Threads::RWLock::WriterLock         writer_lock_t;
+
         typedef std::unique_ptr<mutex_t>                  mutex_p_t;
         typedef std::unique_ptr<reader_lock_t>            reader_lock_p_t;
         typedef std::unique_ptr<writer_lock_t>            writer_lock_p_t;
@@ -72,7 +76,6 @@ namespace Derp {
      *
      */
     class CurlEasy {
-    private:
         struct CURLDeleter {
             void operator()(CURL* curl) const {
                 curl_easy_cleanup( curl );
@@ -80,31 +83,31 @@ namespace Derp {
         };
 
     public:
-        typedef std::pair<std::string, DownloadInfo> ResultPair;
-
+        typedef std::pair<std::string, DownloadResult> ResultPair;
+        typedef std::function<void (std::string&&, DownloadResult&&)> EasyCallback;
         CurlEasy(const std::shared_ptr<CurlShare>& share);
-
+        
         /** Attempts to fetch URL. download_complete is raised when
          * finished.
          *
-         * If an error occurs, the error string will be raised on
-         * signal_error and DownloadInfo::had_error will be true.
+         * Threadsafe.
          */
-        void download_async(const std::string& url);
-
-        MessageDispatcher<ResultPair> download_complete;
-        MessageDispatcher<std::string> signal_error;
+        void download_async(const std::string& url,
+                            const EasyCallback& cb,
+                            const std::size_t size_hint = 0);
 
     private:
-        CurlEasy(const CurlEasy&) = delete;
+        CurlEasy(const CurlEasy&)            = delete;
         CurlEasy& operator=(const CurlEasy&) = delete;
 
-        bool setup(const std::string& url);
-        void download(const std::string& url);
+        std::unique_ptr<std::string> setup(const std::string& url);
+        void download(const std::string& url,
+                      const EasyCallback& cb,
+                      const std::size_t size_hint);
 
-        std::unique_ptr<char[]> m_error_buffer;
-        std::unique_ptr<std::string> m_buffer;
-        std::shared_ptr<CurlShare> m_share;
+        CallbackDispatcher                 m_dispatcher;
+        std::unique_ptr<char[]>            m_error_buffer;
+        std::shared_ptr<CurlShare>         m_share;
         std::unique_ptr<CURL, CURLDeleter> m_curl;
         Active active;
     };
@@ -119,26 +122,42 @@ namespace Derp {
     class CurlMulti {
     public:
         CurlMulti(const int max_connections = COLDWIND_CURL_CONNECTIONS);
-        typedef std::function<void (std::string&& result, DownloadInfo&&)> CurlMultiCallback;
+        typedef CurlEasy::EasyCallback CurlMultiCallback;
 
         /** Fetchs url and returns result in the callback.
          *
-         * If an error occurs, the error string will be raised on
-         * signal_error and DownloadInfo::had_error will be true.
+         * Threadsafe.
          */
         void download_url_async(const std::string& url,
-                                const CurlMultiCallback& cb);
-        sigc::signal<void, const std::string&> signal_error;
+                                const CurlMultiCallback& cb,
+                                const std::size_t size_hint = 0);
 
     private:
+        /** Serves the request queue if possible.
+         *
+         * m_mutex should be held before calling this function.
+         */
         void start_download_from_queue();
-        void on_download_completed(CurlEasy& curl);
-        void on_download_error(CurlEasy& curl);
 
-        std::queue<std::unique_ptr<CurlEasy>> curl_queue;
-        std::queue<std::string> request_queue;
-        std::deque<std::unique_ptr<CurlEasy>> active_curls;
-        std::map<std::string, CurlMultiCallback> callback_map;
+        /** Forwards the results to cb and moves the CurlEasy back to
+         * curl_queue.
+         *
+         * Called on GMainLoop via CurlEasy's CallbackDispatcher.
+         */
+        void on_download_completed(const CurlEasy* curl,
+                                   const CurlMultiCallback& cb,
+                                   std::string&& result,
+                                   DownloadResult&& info);
+
+        typedef std::function<void (const std::unique_ptr<CurlEasy>&)> Request;
+
+        /** Lock access to the queues allowing download_url_async to
+         * be called from any thread.
+         */
+        mutable std::mutex                    m_mutex;
+        std::queue<std::unique_ptr<CurlEasy>> m_curl_queue;
+        std::deque<std::unique_ptr<CurlEasy>> m_active_curls;
+        std::queue<Request>                   m_request_queue;
     };
 
     /** Downloads url to filename in target_dir.
@@ -151,58 +170,50 @@ namespace Derp {
 	class Downloader {
 	public:
 		Downloader();
-        /** Downloads url and saved to filename in target_dir.
+
+        typedef std::function<void (const DownloadResult&)> DownloaderCallback;
+
+        /** Downloads url and saves to filename in target_dir.
          *
          * If filename already exists, a noncolliding filename will be
          * found such as filename (2).ext.
          */
         void download_async(const std::string& url,
                             const Glib::RefPtr<Gio::File>& target_dir,
-                            const std::string& filename);
+                            const std::string& filename,
+                            const std::size_t size_hint,
+                            const DownloaderCallback& cb);
 
         /** Downloads url and passes the result back to the given
          * callback on the GMainLoop.
-         *
-         * Note: This method will not result in
-         * signal_download_complete, but error strings will be fed
-         * through signal_error.
          */
-        void download_async(const std::string& url, const CurlMulti::CurlMultiCallback& cb);
-
-        sigc::signal<void, const std::string&> signal_error;
-        sigc::signal<void, const DownloadInfo&> signal_download_complete;
-
-
-        /* Depreciated methods */
-		void download_async(const std::list<Derp::Image>&, const Derp::Request&) __attribute__((deprecated));
-
-        /* Depreciated signals */
-		Glib::Dispatcher signal_download_finished;
-		Glib::Dispatcher signal_download_error;
+        void download_async(const std::string& url,
+                            const CurlMulti::CurlMultiCallback& cb);
 
 	private:
 		Downloader& operator=(const Downloader&) = delete; // Evil func
 		Downloader(const Downloader&) = delete; // Evil func
 
-        MessageDispatcher<std::string> signal_internal_error;
-        MessageDispatcher<DownloadInfo> signal_internal_download_complete;
-        CurlMulti m_curl_multi;
-        Active active;
-
         /** Callback from CurlMulti when curl has fetched url. Called
          * on GMainLoop.
          */
         void download_complete_cb(std::string&& data,
-                                  DownloadInfo&& info, 
+                                  DownloadResult&& info, 
                                   const Glib::RefPtr<Gio::File>& target_dir,
-                                  const std::string& filename);
+                                  const std::string& filename,
+                                  const DownloaderCallback& cb);
 
         /** Writes data to disk. Intented to be performed in a
          * dedicated thread.
          */
-        void download_write(const std::string& data, DownloadInfo& info,
+        void download_write(const std::string& data, DownloadResult& info,
                             const Glib::RefPtr<Gio::File>& target_dir,
-                            const std::string& filename);
+                            const std::string& filename,
+                            const DownloaderCallback& cb);
+
+        CallbackDispatcher m_dispatcher;
+        CurlMulti          m_curl_multi;
+        Active active;
 	};
 }
 

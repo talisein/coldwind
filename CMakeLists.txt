@@ -25,8 +25,6 @@ configure_file (
   )
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
-
-
 set(CMAKE_BUILD_TYPE debug)
 set(CMAKE_CXX_FLAGS "-std=c++0x")
 set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -O0 -Wall -Wextra -pedantic" )
@@ -45,11 +43,16 @@ find_package(GTK3 3.4 REQUIRED gtk gtkmm gthread)
 set(LIBS ${LIBS} ${GTK3_LIBRARIES})
 set(INCLUDES ${INCLUDES} ${GTK3_INCLUDE_DIRS})
 
-add_definitions( -D_GNU_SOURCE -DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED -DGSEAL_ENABLE )
+find_package(PkgConfig)
+pkg_check_modules(JSONGLIB json-glib-1.0)
+set(LIBS ${LIBS} ${JSONGLIB_LIBRARIES})
+set(INCLUDES ${INCLUDES} ${JSONGLIB_INCLUDE_DIRS})
+
+add_definitions( -D_GNU_SOURCE -DGLIB_DISABLE_DEPRECATED -DGDK_PIXBUF_DISABLE_DEPRECATED -DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED -DGTKMM_DISABLE_DEPRECATED -DG_DISABLE_DEPRECATED -DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_32 -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_32 )
 
 include_directories( ${INCLUDES} )
 
-add_executable(coldwind coldwind_resources.c main.cxx parser.cxx application.cxx hasher.cxx downloader.cxx image.cxx lurker.cxx manager.cxx request.cxx window.cxx window_gtk3.cxx windowimpl.cxx )
+add_executable(coldwind coldwind_resources.c main.cxx parser.cxx application.cxx hasher.cxx downloader.cxx lurker.cxx manager.cxx request.cxx window.cxx window_gtk3.cxx windowimpl.cxx xml_reader.cpp xml_writer.cpp horizon_post.c post.cpp)
 
 target_link_libraries(coldwind ${LIBS})
 

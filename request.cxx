@@ -83,3 +83,28 @@ Glib::ustring Derp::Request::getBoard() const {
 Glib::ustring Derp::Request::getThread() const {
   return thread_url_.substr(thread_url_.find_last_of("/") + 1);
 }
+
+namespace Derp {
+    std::string
+    Request::get_api_url() const
+    {
+        std::stringstream ss;
+        ss << "http://api.4chan.org/";
+        ss << getBoard();
+        ss << "/res/";
+        auto number = getThread();;
+        ss << number.substr(0, number.find_first_not_of("0123456789"));
+        ss << ".json";
+        return ss.str();
+    }
+
+    guint64
+    Request::get_thread_id() const
+    {
+        std::stringstream ss;
+        guint64 id;
+        ss << getThread();
+        ss >> id;
+        return id;
+    }
+}

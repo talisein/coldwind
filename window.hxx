@@ -12,7 +12,7 @@ namespace Derp {
 
 	class Window {
 	public:
-		Window();
+		Window(const std::shared_ptr<Hasher>&);
 
 		void run();
 		sigc::signal<void, const Request&> signal_new_request;
@@ -33,7 +33,7 @@ namespace Derp {
 		bool startManager(const Request&);
 		void onStartDownloads(int);
 		void updateProgress();
-		void onDownloadsFinished(int num, const Request&);
+		void onDownloadsFinished(int num, const Request& request);
 		
 	};
 }

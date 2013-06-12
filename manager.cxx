@@ -1,95 +1,116 @@
-#include "manager.hxx"
 #include <iostream>
+#include "manager.hxx"
+#include "hasher.hxx"
+#include "post.hpp"
 
-Derp::Manager::Manager() : 
-	is_working(false)
-{
-	m_parser.signal_parsing_finished.connect(sigc::mem_fun(*this, &Derp::Manager::parsing_finished));
-	m_parser.signal_thread_404.connect(sigc::mem_fun(*this, &Derp::Manager::thread_404));
-	m_parser.signal_fetching_error.connect(sigc::mem_fun(*this, &Derp::Manager::thread_fetching_error));
-	m_parser.signal_parsing_error.connect(sigc::mem_fun(*this, &Derp::Manager::thread_parsing_error));
-	m_hasher.signal_hashing_finished.connect(sigc::mem_fun(*this, &Derp::Manager::hashing_finished));
-	m_downloader.signal_download_finished.connect(sigc::mem_fun(*this, &Derp::Manager::download_finished));
-	m_downloader.signal_download_error.connect(sigc::mem_fun(*this, &Derp::Manager::download_error));
-    m_downloader.signal_download_complete.connect([](const Derp::DownloadInfo& info) {
-            std::cerr << "Download complete: " << info.url << " to "
+
+namespace Derp {
+
+    Manager::Manager(const std::shared_ptr<Hasher>& hasher) :
+        m_hasher(hasher),
+        m_downloader(std::make_shared<Downloader>()),
+        m_json_parser(std::make_shared<JsonParser>(m_downloader))
+    {
+    }
+
+    bool
+    Manager::download_async(const Request& data)
+    {
+        m_hasher->hash_async(data, [this, data] {
+                m_json_parser->parse_async(data, std::bind(&Manager::parse_cb,
+                                                           this,
+                                                           std::placeholders::_1,
+                                                           std::placeholders::_2));
+            });
+
+        return true;
+    }
+    
+    void
+    Manager::parse_cb(const ParserResult& result, const Request& request)
+    {
+        if (result.had_error) {
+            switch (result.error_code) {
+                case ParserResult::THREAD_404_ERROR:
+                    signal_download_error(Error::THREAD_404);
+                    break;
+                case ParserResult::DOWNLOAD_ERROR:
+                    signal_download_error(Error::THREAD_CURL_ERROR);
+                    break;
+                case ParserResult::PARSE_ERROR:
+                    signal_download_error(Error::THREAD_PARSE_ERROR);
+                    break;
+                case ParserResult::NO_ERROR:
+                    break;
+            }
+            return;
+        }
+
+        auto posts = std::move(result.posts);
+        auto num_downloaded = std::make_shared<std::size_t>(0);
+        auto num_errors     = std::make_shared<std::size_t>(0);
+        auto const is_valid = [this, request](const Glib::RefPtr<Post>& post)->bool {
+            return (!m_hasher->has_md5(post->get_hash_hex())
+                    && post->get_width() >= request.get_min_width()
+                    && post->get_height() >= request.get_min_height());
+        };
+
+        const std::size_t num_downloading = std::count_if(posts.begin(),
+                                                          posts.end(),
+                                                          is_valid);
+        auto callback = std::bind(&Manager::download_complete_cb,
+                                  this,
+                                  std::placeholders::_1,
+                                  request,
+                                  num_downloading,
+                                  num_downloaded,
+                                  num_errors);
+                                                  
+        for (auto const & post : posts) {
+            auto md5hex = post->get_hash_hex();
+            if (is_valid(post)) {
+                std::string filename;
+                if (request.useOriginalFilename()) {
+                    filename = post->get_original_filename() + post->get_image_ext();
+                } else {
+                    filename = post->get_renamed_filename() + post->get_image_ext();
+                }
+                m_downloader->download_async(post->get_image_url(),
+                                             request.getDirectory(),
+                                             filename,
+                                             post->get_fsize(),
+                                             callback);
+            }
+        }
+
+        if (num_downloading != 0)
+            signal_starting_downloads(num_downloading);
+        else
+            signal_all_downloads_finished(0, request);
+    }
+
+
+    void
+    Manager::download_complete_cb(const DownloadResult& info,
+                                  const Request& request,
+                                  const std::size_t num_downloading,
+                                  const std::shared_ptr<std::size_t>& num_downloaded,
+                                  const std::shared_ptr<std::size_t>& num_errors)
+    {
+        if (info.had_error) {
+            ++(*num_errors);
+            signal_download_error(Error::IMAGE_CURL_ERROR);
+            std::cerr << "Error: " << info.error_str << std::endl;
+        } else {
+            ++(*num_downloaded);
+            signal_download_finished();
+            std::cout << "Info: Downloaded " << info.url << " to "
                       << info.filename << " at " << info.speed/1024.0
                       << " KiB/s" << std::endl;
-        });
-    m_downloader.signal_error.connect([](const std::string& msg) {
-            std::cerr << "Download error: " << msg << std::endl;
-        });
-}
+        }
 
-bool Derp::Manager::download_async(const Derp::Request& data) {
-	if (!is_working) {
-		is_working = true;
-		m_request = data;
-		is_hashing = is_parsing = true;
-		m_parser.parse_async(m_request);
-		m_hasher.hash_async(m_request);
-		return true;
-	} else {
-		return false; 
-	}
-}
-
-void Derp::Manager::parsing_finished() {
-	is_parsing = false;
-	try_download();
-}
-
-void Derp::Manager::hashing_finished() {
-	is_hashing = false;
-	try_download();
-}
-
-void Derp::Manager::thread_404() {
-	is_working = false;
-	signal_download_error(Derp::Error::THREAD_404);
-	// TODO: Need to manage state better
-}
-
-void Derp::Manager::thread_fetching_error() {
-	is_working = false;
-	signal_download_error(Derp::Error::THREAD_CURL_ERROR);
-}
-
-void Derp::Manager::thread_parsing_error() {
-	is_working = false;
-	signal_download_error(Derp::Error::THREAD_PARSE_ERROR);
-}
-
-void Derp::Manager::try_download() {
-	if ( !(is_parsing || is_hashing) ) {
-		num_errors = 0;
-		num_downloaded = 0;
-		num_downloading = m_parser.request_downloads(m_downloader, m_hasher, m_request);
-		if ( num_downloading == 0 ) {
-			done();
-		} else {
-			signal_starting_downloads(num_downloading);
-		}
-	}
-}
-
-void Derp::Manager::download_finished() {
-	num_downloaded++;
-	signal_download_finished();
-	if (num_downloading == (num_downloaded + num_errors)) {
-		done();
-	}
-}
-
-void Derp::Manager::download_error() {
-	num_errors++;
-	signal_download_error(Derp::Error::IMAGE_CURL_ERROR);
-	if (num_downloading == (num_downloaded + num_errors)) {
-		done();
-	}
-}
-
-void Derp::Manager::done() {
-	is_working = false;
-	signal_all_downloads_finished(num_downloaded, m_request);
+        if (num_downloading == (*num_downloaded + *num_errors)) {
+            signal_all_downloads_finished(*num_downloaded, request);
+        }
+    }
 }

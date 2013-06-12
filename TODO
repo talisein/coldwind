@@ -5,31 +5,14 @@
   * Record download statistics from curl (Time, Bytes), populate back
     to UI [Medium] [Mostly done]
 
-  * Decode curl's error messages and put on std:cerr [Easy] [Mostly
-    done]
-
   * Redirect std::cout and std::cerr to an optional popup message log
     [Hard] (There's actually a Glib API for this in g_log)
-
-  * Capture libxml errors and do the right thing. [Easy] [Mostly done]
 
   * Overlay some lurker info text on the image [Medium]
   ** Or some sort of visual lurker feedback. I dunno. [Hard]
   *** Well, there's some std::cout things now. [Partly done]
 
-  * In Glib 3.32, use GResources. And it looks like GApplication will
-    finally land. [Longterm]
-
-  * Store the hash cache to disk [Medium]
-
-  * Accept options for number of hashing threads & curl connections [Easy]
-
-  * Don't lock the UI during download. There should be a creative use
-    of Glib::Mutex as an alternative to try_download() testing. [Medium]
-
   * set_sensitivity(false) on the spinner when lurk-to-404 [Easy]
-
-  * Catch signal_fetching_error from Parser [Easy]
 
   * Make sure that we ignore everything after # after the last / in
     the thread url [Easy]
@@ -38,29 +21,13 @@
     Request use that, and then application can use the utility
     functions directly in update_thread_dir_completer [Easy]
 
-  * Save the thread to the target directory and re-write image links
+  * Save the thread html to the target directory and re-write image links
     to the file we save to. [Hard+]
 
-  * Subclass Window and move all the UI stuff out of application
-    [Easy+]
-
   * Oh god, what happens if the thread name box is empty? [Easy]
-
-  * If there are two images in a thread (and relatively close to one
-    another) with the same original filename and we're saving by
-    original filename, one of them will get lost. The collision
-    detection will get the right one on a second try either from the
-    UI or lurker thread. Attempting to Gio::File::query_exists() on
-    the .coldwind extension DOES NOT WORK. I have a branch called
-    'namecollision' that shows this. One approach: use a 'secure'
-    temporary file. After renaming we might have better success on
-    query_exists(). [Medium+]
 
   * The thread filename completer got wonky on me once. What's the
     deal? Dunno. Maybe the async method never finished or something.
   ** It seems like if you use a FileChooser in a different GTK
      program, the chosen file is silently propigated to
-     Stormee. That's some BS!
-
-  * If the thread fetching fails, we currently get locked up in the
-    lurker. [Maybe Solved]
+     Coldwind.

@@ -4,11 +4,11 @@
 #include "config.h"
 #include "window_gtk3.hxx"
 
-Derp::Window::Window() 
+Derp::Window::Window(const std::shared_ptr<Hasher>& hasher) 
 	: PROGRESS_FPS(60),
 	  uwindowImpl_(createWindowImpl()),
 	  timer_(),
-	  manager_(),
+	  manager_(hasher),
 	  progressConnection_()
 {
 	// Signals WindowImpl catches
@@ -69,21 +69,18 @@ bool Derp::Window::startManager(const Request& request) {
     return is_accepted;
 }
 
-void Derp::Window::onStartDownloads(int num) {
-	if (num > 0)
-		progressConnection_ = Glib::signal_timeout().connect( sigc::bind_return( sigc::mem_fun(*this, &Derp::Window::updateProgress), true), 1000 / PROGRESS_FPS);
+void Derp::Window::onStartDownloads(int) {
 }
 
 void Derp::Window::updateProgress() {
-	uwindowImpl_->update_progress( manager_.getProgress() );
 }
 
-void Derp::Window::onDownloadsFinished(int num, const Request& request) {
+void Derp::Window::onDownloadsFinished(int num, const Derp::Request& request) {
 	timer_.stop();
 	std::cout << "Info: Downloaded " << num << " images in " << std::setprecision(5) << timer_.elapsed() << " seconds." << std::endl;
 
 	progressConnection_.disconnect();
-	
+
 	if (!request.isExpired()) {
 		signal_new_request(request);
 	}

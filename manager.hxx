@@ -1,11 +1,11 @@
 #ifndef MANAGER_HXX
 #define MANAGER_HXX
-#include <glibmm/ustring.h>
+#include <memory>
+#include <sigc++/signal.h>
 #include <glibmm/refptr.h>
-#include "parser.hxx"
-#include "hasher.hxx"
-#include "downloader.hxx"
 #include "request.hxx"
+#include "parser.hxx"
+#include "downloader.hxx"
 
 namespace Derp {
   
@@ -17,38 +17,46 @@ namespace Derp {
 		THREAD_PARSE_ERROR
 	};
 
+    class Hasher;
+    class Post;
+
+    struct ManagerResult
+    {
+        enum { HASHING, PARSING, DOWNLOADING, DONE, LURKING } state;
+        Request            request;
+        bool               had_error;
+        Error              error_code;
+        std::string        error_str;
+        Glib::RefPtr<Post> op; /* Thread OP post */
+        size_t             num_downloading;
+        size_t             num_downloaded;
+        size_t             num_download_errors;
+        DownloadResult     info; /* Valid when state is DOWNLOADING
+                                  * and num_downloaded > 0 */
+    };
+
 	class Manager {
 	public:
-		Manager();
+		Manager(const std::shared_ptr<Hasher>& hasher);
 
-		bool download_async(const Derp::Request& data);
-		sigc::signal<void, int, const Derp::Request&> signal_all_downloads_finished;
+		bool download_async(const Request& data);
+		sigc::signal<void, int, const Request&> signal_all_downloads_finished;
 		sigc::signal<void> signal_download_finished;
 		sigc::signal<void, int> signal_starting_downloads;
-		sigc::signal<void, const Derp::Error&> signal_download_error;
+		sigc::signal<void, const Error&> signal_download_error;
 
-		double getProgress() __attribute__((deprecated)) { return 0.; }
 	private:
+        std::shared_ptr<Hasher> m_hasher;
+        std::shared_ptr<Downloader> m_downloader;
+        std::shared_ptr<JsonParser> m_json_parser;
+        
+        void parse_cb(const ParserResult& result, const Request& request);
 
-		void parsing_finished();
-		void hashing_finished();
-		void try_download();
-		void download_finished();
-		void download_error();
-		void done();
-		void thread_404();
-		void thread_fetching_error();
-		void thread_parsing_error();
-		bool is_working;
-		bool is_hashing, is_parsing;
-		int num_downloading, num_downloaded, num_errors;
-
-		Derp::Parser m_parser;
-		Derp::Hasher m_hasher;
-		Derp::Downloader m_downloader;
-
-		Derp::Request m_request;
-
+        void download_complete_cb(const DownloadResult& info,
+                                  const Request& request,
+                                  const std::size_t num_downloading,
+                                  const std::shared_ptr<std::size_t>& num_downloaded,
+                                  const std::shared_ptr<std::size_t>& num_errors);
 	};
 }
 

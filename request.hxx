@@ -26,12 +26,16 @@ namespace Derp {
 		Glib::ustring getBoard() const;
 		Glib::ustring getThread() const;
 		Glib::ustring getUrl() const;
+        std::string get_api_url() const;
+        guint64 get_thread_id() const;
 
 		bool isExpired() const;
 		void decrementMinutes();
 		void mark404();
 		bool useOriginalFilename() const;
 
+        int get_min_width() const { return xDim_; };
+        int get_min_height() const { return yDim_; };
 	private:
 		Glib::ustring thread_url_;
 		Glib::RefPtr<Gio::File> target_directory_;

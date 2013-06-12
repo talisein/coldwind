@@ -2,7 +2,8 @@
 #include <iostream>
 #include <glibmm/thread.h>
 
-Derp::Lurker::Lurker()
+Derp::Lurker::Lurker(const std::shared_ptr<Hasher>& hasher) :
+    m_manager(hasher)
 {
   m_manager_connection = m_manager.signal_all_downloads_finished.connect( sigc::mem_fun(*this, &Derp::Lurker::downloads_finished) );
   m_manager.signal_download_error.connect( sigc::mem_fun(*this, &Derp::Lurker::download_error) );

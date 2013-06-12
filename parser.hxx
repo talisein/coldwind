@@ -1,70 +1,54 @@
 #ifndef PARSER_HXX
 #define PARSER_HXX
 
-#include <libxml/HTMLparser.h>
-#include <curl/curl.h>
-#include <list>
-#include <map>
-#include <glibmm/ustring.h>
-#include <glibmm/datetime.h>
-#include <glibmm/thread.h>
-#include "image.hxx"
-#include "downloader.hxx"
-#include "hasher.hxx"
-#include "request.hxx"
+#include <vector>
+#include "callback_dispatcher.hpp"
+#include "active.hpp"
 
 namespace Derp {
 
-  class Parser
-  {
-  public:
-    Parser();
-    ~Parser();
+    class Downloader;
+    class Post;
+    class Request;
+    struct DownloadResult;
+    struct ParserResult;
 
-    void parse_async(const Derp::Request& request);
-    int request_downloads(Derp::Downloader&, const Derp::Hasher&, const Derp::Request&);
-    Glib::Dispatcher signal_parsing_finished;
-    Glib::Dispatcher signal_thread_404;
-    Glib::Dispatcher signal_fetching_error;
-    Glib::Dispatcher signal_parsing_error;
+    class JsonParser
+    {
+    public:
+        JsonParser(const std::shared_ptr<Downloader>&);
+        
+        typedef std::vector<Glib::RefPtr<Post>> ImageList_t;
+
+        typedef std::function<void (const ParserResult&, const Request&)> ParserCallback;
+        /** Return in cb a list of 4chan posts in the thread specified
+         * by Request that have images.
+         */
+        void parse_async(const Request& request, const ParserCallback& cb);
+
+    private:
+        /* Forward the downloaded JSON to parse(), or callback on
+         * error.
+         */
+        void download_cb(std::string&& json, DownloadResult&& info,
+                         Request& request, const ParserCallback& cb);
+
+        void parse(const std::string& json, const Request& request, const ParserCallback& cb);
+
+        std::shared_ptr<Downloader> m_downloader;
+        CallbackDispatcher m_dispatcher;
+        Active m_active;
+    };
+
+    struct ParserResult
+    {
+        bool had_error;
+        enum { NO_ERROR, THREAD_404_ERROR, DOWNLOAD_ERROR, PARSE_ERROR } error_code;
+        std::string error_str;
+        JsonParser::ImageList_t posts;
+    };
 
 
-  private:
-    Parser& operator=(const Parser&) = delete; // Evil func
-    Parser(const Parser&) = delete; // Evil func
-
-    Glib::ustring curSourceUrl, curOrigFilename;
-    int curxDim, curyDim;
-    std::list<Derp::Image> m_images;
-    Derp::Request request_;
-
-    CURL* curl;
-    std::map<Glib::ustring, Glib::DateTime> m_lastupdate_map;
-
-    htmlSAXHandlerPtr sax;
-    xmlParserCtxtPtr ctxt;
-    bool parser_error_;
-
-    bool setup_curl(const Glib::ustring& url);
-
-    void parse_thread(const Derp::Request& request);
-    void on_start_element(Glib::ustring name, std::map<Glib::ustring, Glib::ustring> attr_map);
-    void on_characters(const Glib::ustring&);
-
-    friend void startElement(void* user_data, const xmlChar* name, const xmlChar** attrs);
-    friend void onCharacters(void* user_data, const xmlChar* chars, int len);
-    friend void on_xmlError(void* user_data, xmlErrorPtr error);
-
-    friend size_t parser_write_cb(void *ptr, size_t size, size_t nmemb, void *data);
-  };
-
-  void startElement(void* user_data, const xmlChar* name, const xmlChar** attrs);
-  void onCharacters(void* user_data, const xmlChar* chars, int len);
-  void on_xmlError(void* user_data, xmlErrorPtr error);
-  size_t parser_write_cb(void *ptr, size_t size, size_t nmemb, void *data);
 }
-
-
-
 
 #endif

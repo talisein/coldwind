@@ -215,7 +215,8 @@ void Derp::Window_Gtk3::download_error(const Derp::Error& error) {
 }
 
 void Derp::Window_Gtk3::download_finished() {
-  num_downloaded_++;
+    num_downloaded_++;
+    update_progressBar();
 }
 
 void Derp::Window_Gtk3::downloads_finished(int, const Request&) {
@@ -234,7 +235,7 @@ void Derp::Window_Gtk3::update_progress(double progress)
 }
 
 void Derp::Window_Gtk3::update_progressBar() {
-	progressBar_->set_fraction( progress_ );
+	progressBar_->set_fraction( static_cast<float>(num_downloaded_ + num_download_errors_) / static_cast<float>(num_downloading_));
 
 	progressBar_->set_show_text(true);
 	std::stringstream st;

@@ -1,14 +1,12 @@
 #include "downloader.hxx"
 #include <algorithm>
 #include <iostream>
-
 namespace Derp {
     namespace {
         extern "C" {
             static void 
             lock_function(CURL *curl, curl_lock_data data, curl_lock_access access, void *userptr)
             {
-                //auto mutex_map_p = static_cast<std::map<curl_lock_data, std::unique_ptr<std::mutex>>*>(userptr);
                 auto share = static_cast<CurlShare*>(userptr);
                 share->lock(curl, data, access);
             }
@@ -133,20 +131,16 @@ namespace Derp {
         }
     }
     
-    bool CurlEasy::setup(const std::string& url)
+    std::unique_ptr<std::string> CurlEasy::setup(const std::string& url)
     {
         bool setup_ok = true;
-        auto check_code = [this, &setup_ok, &url](CURLcode code) {
+        auto check_code = [&setup_ok](CURLcode code) {
             if (code != CURLE_OK) {
                 setup_ok = false;
-                std::stringstream ss;
-                ss << "Failed to set CURL option for " << url << ": " << curl_easy_strerror(code);
-                signal_error(ss.str());
             }
         };
-
+        
         std::unique_ptr<std::string> buffer(new std::string());
-        buffer->reserve(50*1024);
 
         auto code = curl_easy_setopt(m_curl.get(), CURLOPT_URL, url.c_str());
         check_code(code);
@@ -166,149 +160,137 @@ namespace Derp {
         check_code(code);
 
         if (setup_ok) {
-            m_buffer = std::move(buffer);
+            return buffer;
+        } else {
+            return nullptr;
         }
-        return setup_ok;
     }
 
-    void CurlEasy::download_async(const std::string& url)
+    void CurlEasy::download_async(const std::string& url,
+                                  const EasyCallback& cb,
+                                  const std::size_t size_hint)
     {
-        active.send([this, url]{download(url);});
+        active.send([this, url, cb, size_hint]{download(url, cb, size_hint);});
     }
-
-    void CurlEasy::download(const std::string& url)
+    
+    void CurlEasy::download(const std::string& url,
+                            const EasyCallback& cb,
+                            const std::size_t size_hint)
     {
-        DownloadInfo info;
+        DownloadResult info;
         info.url = url;
         info.had_error = false;
-        if (setup(url)) {
+        auto buffer = setup(url);
+        if (buffer) {
+            buffer->reserve(size_hint);
             auto code = curl_easy_perform(m_curl.get());
             if (code == CURLE_OK) {
-                curl_easy_getinfo(m_curl.get(), CURLINFO_TOTAL_TIME, &info.total_time);
-                curl_easy_getinfo(m_curl.get(), CURLINFO_SIZE_DOWNLOAD, &info.size);
+                curl_easy_getinfo(m_curl.get(), CURLINFO_TOTAL_TIME,     &info.total_time);
+                curl_easy_getinfo(m_curl.get(), CURLINFO_SIZE_DOWNLOAD,  &info.size);
                 curl_easy_getinfo(m_curl.get(), CURLINFO_SPEED_DOWNLOAD, &info.speed);
             } else {
                 std::stringstream ss;
                 ss << "Failed downloading " << url << ": " << static_cast<char*>(m_error_buffer.get());
-                signal_error(ss.str());
+                info.error_str = ss.str();
+                curl_easy_getinfo(m_curl.get(), CURLINFO_RESPONSE_CODE,  &info.error_code);
                 info.had_error = true;
             }
         } else {
-            signal_error(std::string("Unable to setup download for ") + url + ". Download aborted.");
+            std::stringstream ss;
+            ss << "Unable to setup download for " << url << ". Download aborted.";
+            info.error_str = ss.str();
+            info.error_code = -1;
             info.had_error = true;
         }
 
-        download_complete(std::make_pair(std::move(*m_buffer), std::move(info)));
+        cb(std::move(*buffer), std::move(info));
     }
 
     CurlMulti::CurlMulti(const int max_connections)
     {
         auto share = std::make_shared<CurlShare>();
         for(int i = 0; i < max_connections; ++i) {
-            curl_queue.emplace(new CurlEasy(share));
-            curl_queue.back()->signal_error.connect(sigc::bind(sigc::mem_fun(*this, &CurlMulti::on_download_error),
-                                                                 sigc::ref(*(curl_queue.back()))));
-            curl_queue.back()->download_complete.connect(sigc::bind(sigc::mem_fun(*this, &CurlMulti::on_download_completed),
-                                                                    sigc::ref(*(curl_queue.back()))));
-        }
-    }
-
-    void CurlMulti::on_download_error(CurlEasy& curl)
-    {
-        while (!curl.signal_error.empty()) {
-            signal_error(std::move(curl.signal_error.front()));
-            curl.signal_error.pop();
+            m_curl_queue.emplace(new CurlEasy(share));
         }
     }
 
     void CurlMulti::start_download_from_queue()
     {
-        while (!curl_queue.empty()) {
-            if (request_queue.empty()) {
+        while (!m_curl_queue.empty()) {
+            if (m_request_queue.empty()) {
                 break;
             } else {
-                auto url = request_queue.front(); request_queue.pop();
-                auto curl = std::move(curl_queue.front()); curl_queue.pop();
-                curl->download_async(url);
-                active_curls.push_back(std::move(curl));
+                auto fn = m_request_queue.front(); m_request_queue.pop();
+                auto curl = std::move(m_curl_queue.front()); m_curl_queue.pop();
+                fn(curl);
+                m_active_curls.push_back(std::move(curl));
             }
         }
     }
 
-    void CurlMulti::on_download_completed(CurlEasy& curl)
+    void CurlMulti::on_download_completed(const CurlEasy* curl,
+                                          const CurlMultiCallback& cb,
+                                          std::string&& result,
+                                          DownloadResult&& info)
     {
-        while (!curl.download_complete.empty()) {
-            auto pair = std::move(curl.download_complete.front());
-            curl.download_complete.pop();
-            /* Find and call callback, then remove */
-            auto iter = callback_map.find(pair.second.url);
-            if (iter != callback_map.end()) {
-                iter->second(std::move(pair.first), std::move(pair.second));
-                callback_map.erase(iter);
-            } else {
-                std::stringstream ss;
-                ss << "Downloaded " << pair.second.url
-                   << " but there is no callback to serve.";
-                signal_error(ss.str()); 
-            }
-        }
+        cb(std::move(result), std::move(info));
 
-        /* Move the curl handle back to curl_queue */
-        auto iter = std::find_if(active_curls.begin(),
-                                 active_curls.end(),
+        std::lock_guard<std::mutex> lock(m_mutex);
+        /* Move the curl handle back to m_curl_queue */
+        auto iter = std::find_if(m_active_curls.begin(),
+                                 m_active_curls.end(),
                                  [&curl](const std::unique_ptr<CurlEasy>& easy){
-                                     return easy.get() == &curl;
+                                     return easy.get() == curl;
                                  });
-        if (G_LIKELY( iter != active_curls.end() )) {
-            curl_queue.push(std::move(*iter));
-            active_curls.erase(iter);
+        if (G_LIKELY( iter != m_active_curls.end() )) {
+            m_curl_queue.push(std::move(*iter));
+            m_active_curls.erase(iter);
             /* Check for pending requests */
-            start_download_from_queue();
-        } else {
-            signal_error("Download completed but can't find curl handle to "
-                         "return to queue");
+            if (!m_request_queue.empty())
+                start_download_from_queue();
         }
     }
 
-    void CurlMulti::download_url_async(const std::string& url, const CurlMultiCallback& cb)
+    void CurlMulti::download_url_async(const std::string& url,
+                                       const CurlMultiCallback& cb,
+                                       const std::size_t size_hint)
     {
-        callback_map.insert(std::make_pair(url, cb));
-        request_queue.push(url);
-        start_download_from_queue();
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_request_queue.push([this, url, cb, size_hint](const std::unique_ptr<CurlEasy>& curl) {
+                curl->download_async(url,
+                                     std::bind(&CurlMulti::on_download_completed,
+                                               this,
+                                               curl.get(),
+                                               cb,
+                                               std::placeholders::_1,
+                                               std::placeholders::_2),
+                                     size_hint);
+            });
+        if (!m_curl_queue.empty())
+            start_download_from_queue();
     }
                       
     Downloader::Downloader() :
         m_curl_multi(COLDWIND_CURL_CONNECTIONS)
     {
-        m_curl_multi.signal_error.connect([this](const std::string& msg) {
-                signal_error(msg);
-            });
-
-        signal_internal_error.connect([this]{
-                while(!signal_internal_error.empty()) {
-                    signal_error(std::move(signal_internal_error.front()));
-                    signal_internal_error.pop();
-                }
-            });
-
-        signal_internal_download_complete.connect([this]{
-                while (!signal_internal_download_complete.empty()) {
-                    signal_download_complete(std::move(signal_internal_download_complete.front()));
-                    signal_internal_download_complete.pop();
-                }
-            });
     }
     
     void Downloader::download_async(const std::string& url,
                                     const Glib::RefPtr<Gio::File>& target_dir,
-                                    const std::string& filename)
+                                    const std::string& filename,
+                                    const std::size_t size_hint,
+                                    const DownloaderCallback& cb)
+
     {
-        m_curl_multi.download_url_async(url, std::bind(&Downloader::download_complete_cb,
-                                                       this,
-                                                       std::placeholders::_1,
-                                                       std::placeholders::_2,
-                                                       target_dir,
-                                                       filename));
+        m_curl_multi.download_url_async(url,
+                                        std::bind(&Downloader::download_complete_cb,
+                                                  this,
+                                                  std::placeholders::_1, /* data */
+                                                  std::placeholders::_2, /* download info */
+                                                  target_dir,
+                                                  filename,
+                                                  cb),
+                                        size_hint);
     }
 
     void Downloader::download_async(const std::string& url, const CurlMulti::CurlMultiCallback& cb)
@@ -316,17 +298,10 @@ namespace Derp {
         m_curl_multi.download_url_async(url, cb);
     }
                         
-    void Downloader::download_async(const std::list<Image>& imgs,
-                                    const Request& request) {
-        for (auto & img : imgs) {
-            download_async(static_cast<std::string>(img.getUrl()), request.getDirectory(), img.getFilename());
-        }
-    }
-
     namespace {
         static bool
         ensure_target_directory_exists(const Glib::RefPtr<Gio::File>& dir,
-                                       MessageDispatcher<std::string>& signal_error)
+                                       DownloadResult& info)
         {
             if (!dir->query_exists()) {
                 try {
@@ -336,7 +311,9 @@ namespace Derp {
                     std::stringstream ss;
                     ss << "Unable to create directory " << dir->get_path() << ": "
                        << e.what();
-                    signal_error(ss.str());
+                    info.had_error = true;
+                    info.error_str = ss.str();
+                    info.error_code = -2;
                     return false;
                 }
             } else {
@@ -345,13 +322,14 @@ namespace Derp {
         }
     }
 
-    void Downloader::download_write(const std::string& data, DownloadInfo& info,
+    void Downloader::download_write(const std::string& data, DownloadResult& info,
                                     const Glib::RefPtr<Gio::File>& target_dir,
-                                    const std::string& filename)
+                                    const std::string& filename,
+                                    const DownloaderCallback& cb)
     {
         /* Ensure target directory exists */
-        if (!ensure_target_directory_exists(target_dir, signal_internal_error)) {
-            signal_download_error();
+        if (!ensure_target_directory_exists(target_dir, info)) {
+            m_dispatcher(std::bind(cb, info));
             return;
         }
 
@@ -374,48 +352,54 @@ namespace Derp {
                 } else {
                     std::stringstream ss;
                     ss << "Saving " << file->get_path() << " failed: " << e.what();
-                    signal_internal_error(ss.str());
-                    signal_download_error();
-                    break;
+                    info.had_error = true;
+                    info.error_code = -2;
+                    info.error_str = ss.str();
+                    m_dispatcher(std::bind(cb, info));
+                    return;
                 }
             }
         };
-                        
+        
         /* Write data to file */
         try {
             gsize written;
             fos->write_all(data, written);
             fos->close();
-            info.filename = file->get_basename();
-            signal_download_finished();
-            signal_internal_download_complete(info);
+            info.filename = file->get_path();
+            m_dispatcher(std::bind(cb, info));
         } catch (Gio::Error e) {
             std::stringstream ss;
             ss << "Saving " << file->get_path() << " failed: " << e.what();
-            signal_internal_error(ss.str());
             try {
                 file->remove();
             } catch (Gio::Error e) {
-                std::stringstream ss;
-                ss << "Unable to cleanup corrupt file " << file->get_path()
-                   << ": " << e.what();
-                signal_internal_error(ss.str());
+                ss << std::endl << "Also unable to cleanup corrupt file "
+                   << file->get_path() << ": " << e.what();
             }
-            signal_download_error();
+            info.had_error = true;
+            info.error_str = ss.str();
+            info.error_code = -2;
+            m_dispatcher(std::bind(cb, info));
         }        
     }
 
     void Downloader::download_complete_cb(std::string&& data,
-                                          DownloadInfo&& info,
+                                          DownloadResult&& info,
                                           const Glib::RefPtr<Gio::File>& target_dir,
-                                          const std::string& filename)
+                                          const std::string& filename,
+                                          const DownloaderCallback& cb)
     {
         if (!info.had_error) {
-            active.send(std::bind(&Downloader::download_write, this,
-                                  std::move(data), std::move(info),
-                                  target_dir, filename));
+            active.send(std::bind(&Downloader::download_write,
+                                  this,
+                                  std::move(data),
+                                  std::move(info),
+                                  target_dir,
+                                  filename,
+                                  cb));
         } else {
-            signal_download_error();
+            cb(info);
         }
     }
 }
