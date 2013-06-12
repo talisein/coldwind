@@ -9,6 +9,12 @@
 
 namespace Derp {
 
+    ParserResult::ParserResult() :
+        had_error(false),
+        error_code(NO_ERROR)
+    {
+    }
+
     JsonParser::JsonParser(const std::shared_ptr<Downloader>& downloader) :
         m_downloader(downloader)
     {

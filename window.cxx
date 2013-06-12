@@ -4,27 +4,14 @@
 #include "config.h"
 #include "window_gtk3.hxx"
 
-Derp::Window::Window(const std::shared_ptr<Hasher>& hasher) 
-	: PROGRESS_FPS(60),
+Derp::Window::Window(const std::shared_ptr<Manager>& manager) :
 	  uwindowImpl_(createWindowImpl()),
-	  timer_(),
-	  manager_(hasher),
-	  progressConnection_()
+	  manager_(manager)
 {
-	// Signals WindowImpl catches
-	manager_.signal_starting_downloads.connect(sigc::mem_fun(uwindowImpl_, &Derp::WindowImpl::starting_downloads));
-	manager_.signal_download_finished.connect(sigc::mem_fun(uwindowImpl_, &Derp::WindowImpl::download_finished));
-	manager_.signal_all_downloads_finished.connect(sigc::mem_fun(uwindowImpl_, &Derp::WindowImpl::downloads_finished));
-	manager_.signal_download_error.connect(sigc::mem_fun(uwindowImpl_, &Derp::WindowImpl::download_error));
-	
-
-	// Signals Window catches
-	manager_.signal_starting_downloads.connect( sigc::mem_fun(*this, &Derp::Window::onStartDownloads) );
-	manager_.signal_all_downloads_finished.connect(sigc::mem_fun(*this, &Derp::Window::onDownloadsFinished));
 }
 
 Derp::WindowImpl* Derp::Window::getWindowImpl() {
-	return uwindowImpl_;
+	return uwindowImpl_.get();
 }
 
 Derp::WindowImpl* Derp::Window::createWindowImpl() {
@@ -32,7 +19,6 @@ Derp::WindowImpl* Derp::Window::createWindowImpl() {
 	Window_Gtk3* impl = nullptr;
 
 	try {
-
 		GtkBuilder* cbuilder = gtk_builder_new();
 		gtk_builder_add_from_resource(cbuilder, "/org/talinet/coldwind/overEngineering.glade", NULL);
 		Glib::RefPtr<Gtk::Builder> refBuilder = Glib::wrap(cbuilder);
@@ -58,31 +44,50 @@ void Derp::Window::run() {
 }
 
 bool Derp::Window::startManager(const Request& request) {
-    timer_.reset();
-    timer_.start();
 
-    bool is_accepted = manager_.download_async(request);
-    if (!is_accepted) {
-	    timer_.stop();
-    }
+    bool is_accepted = manager_->download_async(request,
+                                               std::bind(&Derp::Window::manager_cb,
+                                                         this,
+                                                         std::placeholders::_1));
 
     return is_accepted;
 }
 
-void Derp::Window::onStartDownloads(int) {
-}
-
-void Derp::Window::updateProgress() {
-}
-
-void Derp::Window::onDownloadsFinished(int num, const Derp::Request& request) {
-	timer_.stop();
-	std::cout << "Info: Downloaded " << num << " images in " << std::setprecision(5) << timer_.elapsed() << " seconds." << std::endl;
-
-	progressConnection_.disconnect();
-
+void Derp::Window::onDownloadsFinished(int, const Derp::Request& request) {
 	if (!request.isExpired()) {
 		signal_new_request(request);
 	}
 }
 
+namespace Derp {
+    void
+    Window::manager_cb(const std::shared_ptr<const ManagerResult>& result)
+    {
+        switch (result->state) {
+            case ManagerResult::HASHING:
+            case ManagerResult::PARSING:
+            case ManagerResult::LURKING:
+                break;
+            case ManagerResult::DOWNLOADING:
+                if (result->had_error) {
+                    uwindowImpl_->download_error(result->error_code);
+                } else if (result->num_downloaded > 0) {
+                    uwindowImpl_->download_finished();
+                } else {
+                    uwindowImpl_->starting_downloads(result->num_downloading);
+                }
+                break;
+            case ManagerResult::DONE:
+                if (result->had_error) {
+                    uwindowImpl_->download_error(result->error_code);
+                } else {
+                    uwindowImpl_->downloads_finished(result->num_downloaded, result->request);
+                    onDownloadsFinished(result->num_downloaded, result->request);
+                }
+                break;
+            case ManagerResult::ERROR:
+                uwindowImpl_->download_error(result->error_code);
+                break;
+        }
+    }
+}

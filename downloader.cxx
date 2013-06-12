@@ -2,6 +2,15 @@
 #include <algorithm>
 #include <iostream>
 namespace Derp {
+    DownloadResult::DownloadResult() :
+        had_error(false),
+        error_code(0),
+        total_time(0.),
+        size(0.),
+        speed(0.)
+    {
+    }
+
     namespace {
         extern "C" {
             static void 
@@ -179,7 +188,6 @@ namespace Derp {
     {
         DownloadResult info;
         info.url = url;
-        info.had_error = false;
         auto buffer = setup(url);
         if (buffer) {
             buffer->reserve(size_hint);

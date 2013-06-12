@@ -2,15 +2,9 @@
 #include <iostream>
 #include <glibmm/thread.h>
 
-Derp::Lurker::Lurker(const std::shared_ptr<Hasher>& hasher) :
-    m_manager(hasher)
+Derp::Lurker::Lurker(const std::shared_ptr<Manager>& manager) :
+    m_manager(manager)
 {
-  m_manager_connection = m_manager.signal_all_downloads_finished.connect( sigc::mem_fun(*this, &Derp::Lurker::downloads_finished) );
-  m_manager.signal_download_error.connect( sigc::mem_fun(*this, &Derp::Lurker::download_error) );
-}
-
-Derp::Lurker::~Lurker() {
-  m_manager_connection.disconnect();
 }
 
 /*
@@ -45,10 +39,40 @@ void Derp::Lurker::run() {
 
 void Derp::Lurker::iteration_next() {
   std::cout << "Lurking " << iter->getUrl() << std::endl;
-  if (!m_manager.download_async(*iter)) {
+  if (!m_manager->download_async(*iter, std::bind(&Derp::Lurker::manager_cb, this, std::placeholders::_1))) {
     std::cerr << "Error: Lurker tried to start a download of thread, but the manager is busy." << std::endl;
     iteration_finish(0);
   } 
+}
+
+void 
+Derp::Lurker::manager_cb(const std::shared_ptr<const ManagerResult>& result) {
+    switch(result->state) {
+        case ManagerResult::HASHING:
+        case ManagerResult::LURKING:
+        case ManagerResult::PARSING:
+            break;
+        case ManagerResult::DOWNLOADING:
+            if (result->had_error) {
+                download_error(result->error_code);
+            }
+            break;
+        case ManagerResult::DONE:
+            if (result->had_error) {
+                download_error(result->error_code);
+            } else {
+                downloads_finished(result->num_downloaded, result->request);
+            }
+            break;
+        case ManagerResult::ERROR:
+            // Parsing error
+            if (result->had_error) {
+                download_error(result->error_code);
+            } else {
+
+            }
+            break;
+    }
 }
 
 void Derp::Lurker::download_error(const Derp::Error& error) {

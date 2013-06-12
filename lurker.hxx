@@ -6,8 +6,7 @@
 namespace Derp {
 	class Lurker {
 	public:
-		Lurker(const std::shared_ptr<Hasher>& hasher);
-		~Lurker();
+		Lurker(const std::shared_ptr<Manager>& manager);
 
 		void add_async(const Derp::Request& data);
 		void run();
@@ -28,8 +27,9 @@ namespace Derp {
 		void downloads_finished(int num_downloaded, const Request&);
 		void iteration_finish(int num_downloaded);
 
-		sigc::connection m_manager_connection;
-		Derp::Manager m_manager;
+        void manager_cb(const std::shared_ptr<const ManagerResult>&);
+
+        std::shared_ptr<Manager> m_manager;
 	};
 }
 

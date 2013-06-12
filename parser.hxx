@@ -42,6 +42,7 @@ namespace Derp {
 
     struct ParserResult
     {
+        ParserResult();
         bool had_error;
         enum { NO_ERROR, THREAD_404_ERROR, DOWNLOAD_ERROR, PARSE_ERROR } error_code;
         std::string error_str;

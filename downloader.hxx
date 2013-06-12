@@ -17,7 +17,7 @@ namespace Derp {
     /** Statistical information for download.
      */
     struct DownloadResult {
-        DownloadResult() = default;
+        DownloadResult();
         std::string url;        /* The url that was attempted */
         std::string filename;   /* The actual filename saved to, if saved. */
 

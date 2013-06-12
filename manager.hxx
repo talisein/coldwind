@@ -3,9 +3,10 @@
 #include <memory>
 #include <sigc++/signal.h>
 #include <glibmm/refptr.h>
+#include "downloader.hxx"
 #include "request.hxx"
 #include "parser.hxx"
-#include "downloader.hxx"
+#include "hasher.hxx"
 
 namespace Derp {
   
@@ -17,12 +18,12 @@ namespace Derp {
 		THREAD_PARSE_ERROR
 	};
 
-    class Hasher;
     class Post;
 
     struct ManagerResult
     {
-        enum { HASHING, PARSING, DOWNLOADING, DONE, LURKING } state;
+        ManagerResult();
+        enum { HASHING, PARSING, DOWNLOADING, DONE, LURKING, ERROR} state;
         Request            request;
         bool               had_error;
         Error              error_code;
@@ -37,26 +38,25 @@ namespace Derp {
 
 	class Manager {
 	public:
-		Manager(const std::shared_ptr<Hasher>& hasher);
+		Manager();
 
-		bool download_async(const Request& data);
-		sigc::signal<void, int, const Request&> signal_all_downloads_finished;
-		sigc::signal<void> signal_download_finished;
-		sigc::signal<void, int> signal_starting_downloads;
-		sigc::signal<void, const Error&> signal_download_error;
+        typedef std::function<void (const std::shared_ptr<const ManagerResult>&)> ManagerCallback;
+
+		bool download_async(const Request& request, const ManagerCallback& cb);
 
 	private:
-        std::shared_ptr<Hasher> m_hasher;
+        Hasher     m_hasher;
         std::shared_ptr<Downloader> m_downloader;
-        std::shared_ptr<JsonParser> m_json_parser;
+        JsonParser m_json_parser;
         
-        void parse_cb(const ParserResult& result, const Request& request);
+        void parse_cb(const ParserResult& parser_result,
+                      const Request& request,
+                      const std::shared_ptr<ManagerResult>& result,
+                      const ManagerCallback& cb);
 
         void download_complete_cb(const DownloadResult& info,
-                                  const Request& request,
-                                  const std::size_t num_downloading,
-                                  const std::shared_ptr<std::size_t>& num_downloaded,
-                                  const std::shared_ptr<std::size_t>& num_errors);
+                                  const std::shared_ptr<ManagerResult>& result,
+                                  const ManagerCallback& cb);
 	};
 }
 

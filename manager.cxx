@@ -1,73 +1,104 @@
 #include <iostream>
 #include "manager.hxx"
-#include "hasher.hxx"
 #include "post.hpp"
-
 
 namespace Derp {
 
-    Manager::Manager(const std::shared_ptr<Hasher>& hasher) :
-        m_hasher(hasher),
+    ManagerResult::ManagerResult() :
+        state(HASHING),
+        had_error(false),
+        error_code(Error::DUPLICATE_FILE),
+        num_downloading(0),
+        num_downloaded(0),
+        num_download_errors(0)
+    {
+    }
+
+    Manager::Manager() :
         m_downloader(std::make_shared<Downloader>()),
-        m_json_parser(std::make_shared<JsonParser>(m_downloader))
+        m_json_parser(m_downloader)
     {
     }
 
     bool
-    Manager::download_async(const Request& data)
+    Manager::download_async(const Request& request, const ManagerCallback& cb)
     {
-        m_hasher->hash_async(data, [this, data] {
-                m_json_parser->parse_async(data, std::bind(&Manager::parse_cb,
-                                                           this,
-                                                           std::placeholders::_1,
-                                                           std::placeholders::_2));
+        auto result = std::make_shared<ManagerResult>();
+        result->had_error = false;
+        result->state = ManagerResult::HASHING;
+        result->request = request;
+        cb(result);
+        m_hasher.hash_async(request, [this, result, cb] {
+                result->state = ManagerResult::PARSING;
+                cb(result);
+                m_json_parser.parse_async(result->request,
+                                           std::bind(&Manager::parse_cb,
+                                                     this,
+                                                     std::placeholders::_1,
+                                                     std::placeholders::_2,
+                                                     result,
+                                                     cb));
             });
 
         return true;
     }
     
     void
-    Manager::parse_cb(const ParserResult& result, const Request& request)
+    Manager::parse_cb(const ParserResult& parser_result,
+                      const Request& request,
+                      const std::shared_ptr<ManagerResult>& result,
+                      const ManagerCallback& cb)
     {
-        if (result.had_error) {
-            switch (result.error_code) {
+        result->request = request; // Parser may modify request
+        if (parser_result.had_error) {
+            result->had_error = true;
+            result->state = ManagerResult::ERROR;
+            result->error_str = parser_result.error_str;
+            switch (parser_result.error_code) {
                 case ParserResult::THREAD_404_ERROR:
-                    signal_download_error(Error::THREAD_404);
+                    result->error_code = Error::THREAD_404;
                     break;
                 case ParserResult::DOWNLOAD_ERROR:
-                    signal_download_error(Error::THREAD_CURL_ERROR);
+                    result->error_code = Error::THREAD_CURL_ERROR;
                     break;
                 case ParserResult::PARSE_ERROR:
-                    signal_download_error(Error::THREAD_PARSE_ERROR);
+                    result->error_code = Error::THREAD_PARSE_ERROR;
                     break;
                 case ParserResult::NO_ERROR:
                     break;
             }
+            cb(result);
             return;
         }
 
-        auto posts = std::move(result.posts);
-        auto num_downloaded = std::make_shared<std::size_t>(0);
-        auto num_errors     = std::make_shared<std::size_t>(0);
+        auto posts = std::move(parser_result.posts);
         auto const is_valid = [this, request](const Glib::RefPtr<Post>& post)->bool {
-            return (!m_hasher->has_md5(post->get_hash_hex())
+            return (!m_hasher.has_md5(post->get_hash_hex())
                     && post->get_width() >= request.get_min_width()
                     && post->get_height() >= request.get_min_height());
         };
 
-        const std::size_t num_downloading = std::count_if(posts.begin(),
-                                                          posts.end(),
-                                                          is_valid);
+        result->op = posts.front();
+        result->num_downloaded = 0;
+        result->num_download_errors = 0;
+        result->num_downloading = std::count_if(posts.begin(),
+                                                posts.end(),
+                                                is_valid);
+        cb(result);
         auto callback = std::bind(&Manager::download_complete_cb,
                                   this,
                                   std::placeholders::_1,
-                                  request,
-                                  num_downloading,
-                                  num_downloaded,
-                                  num_errors);
+                                  result,
+                                  cb);
+        if (result->num_downloading == 0) {
+            result->state = ManagerResult::DONE;
+            cb(result);
+        } else {
+            result->state = ManagerResult::DOWNLOADING;
+            cb(result);
+        }
                                                   
         for (auto const & post : posts) {
-            auto md5hex = post->get_hash_hex();
             if (is_valid(post)) {
                 std::string filename;
                 if (request.useOriginalFilename()) {
@@ -82,35 +113,28 @@ namespace Derp {
                                              callback);
             }
         }
-
-        if (num_downloading != 0)
-            signal_starting_downloads(num_downloading);
-        else
-            signal_all_downloads_finished(0, request);
     }
-
 
     void
     Manager::download_complete_cb(const DownloadResult& info,
-                                  const Request& request,
-                                  const std::size_t num_downloading,
-                                  const std::shared_ptr<std::size_t>& num_downloaded,
-                                  const std::shared_ptr<std::size_t>& num_errors)
+                                  const std::shared_ptr<ManagerResult>& result,
+                                  const ManagerCallback& cb)
     {
         if (info.had_error) {
-            ++(*num_errors);
-            signal_download_error(Error::IMAGE_CURL_ERROR);
-            std::cerr << "Error: " << info.error_str << std::endl;
+            result->had_error = true;
+            result->error_code = Error::IMAGE_CURL_ERROR;
+            result->error_str = info.error_str;
+            ++(result->num_download_errors);
         } else {
-            ++(*num_downloaded);
-            signal_download_finished();
-            std::cout << "Info: Downloaded " << info.url << " to "
-                      << info.filename << " at " << info.speed/1024.0
-                      << " KiB/s" << std::endl;
+            result->had_error = false;
+            ++(result->num_downloaded);
         }
+        result->info = info;
+        cb(result);
 
-        if (num_downloading == (*num_downloaded + *num_errors)) {
-            signal_all_downloads_finished(*num_downloaded, request);
+        if (result->num_downloading == (result->num_downloaded + result->num_download_errors)) {
+            result->state = ManagerResult::DONE;
+            cb(result);
         }
     }
 }

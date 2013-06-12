@@ -16,9 +16,7 @@ namespace Derp {
 	private:
 		const int LURKER_TIMEOUT_SECS;
 		void on_my_startup();
-        std::shared_ptr<Downloader> downloader_;
-        std::shared_ptr<JsonParser> json_parser_;
-        std::shared_ptr<Hasher> hasher_;
+        std::shared_ptr<Manager> manager_;
 		Derp::Window window_;
 		Derp::Lurker lurker_;
 	};
