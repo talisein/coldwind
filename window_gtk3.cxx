@@ -1,7 +1,10 @@
 #include "window_gtk3.hxx"
 #include <iostream>
 #include <gdkmm/pixbufanimation.h>
+#include "post.hpp"
+#include <gtkmm/button.h>
 
+/*
 static Glib::RefPtr<Gdk::PixbufAnimation> get_animation_from_resource(const char* path) {
 	auto loader = Gdk::PixbufLoader::create();
 	GBytes* bytes = g_resources_lookup_data(path, G_RESOURCE_LOOKUP_FLAGS_NONE, NULL);
@@ -12,58 +15,80 @@ static Glib::RefPtr<Gdk::PixbufAnimation> get_animation_from_resource(const char
 	g_bytes_unref(bytes);
 	return loader->get_animation();
 }
+*/
+
+namespace sigc {
+    SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
+}
 
 Derp::Window_Gtk3::Window_Gtk3(BaseObjectType* cobject,
                                const Glib::RefPtr<Gtk::Builder>& refBuilder) 
 	: Derp::WindowImpl(), 
 	  Gtk::Window(cobject),
-	  num_downloading_(0),
-	  num_downloaded_(0),
-	  num_download_errors_(0),
-	  progress_(0.0),
-	  image_(nullptr),
-      columns_(),
       entryCompletion_(Gtk::EntryCompletion::create()),
-      threadListStore_(Gtk::ListStore::create(columns_)),
-      completion_cancellable_(Gio::Cancellable::create())
+      threadListStore_(Gtk::ListStore::create(completion_columns_)),
+      completion_cancellable_(Gio::Cancellable::create()),
+      request_list_store_(Gtk::ListStore::create(request_columns_))
 {
+    Gtk::Button *new_request_button;
+    Gtk::Grid *headerGrid;
+
     refBuilder->get_widget("urlEntry", urlEntry_);
     refBuilder->get_widget("threadFolderEntry", threadFolderEntry_);
-    refBuilder->get_widget("goToggle", goButton_);
-    refBuilder->get_widget("progressBar", progressBar_);
     refBuilder->get_widget("fileChooserButton", fileChooserButton_);
-    refBuilder->get_widget("killMeImage", image_);
     refBuilder->get_widget("boardDirCheckbox", boardDirCheckbox_);
     refBuilder->get_widget("threadDirCheckbox", threadDirCheckbox_);
     refBuilder->get_widget("originalFilenameCheckbox", originalFilenameCheckbox_);
     refBuilder->get_widget("lurk404Checkbox", lurk404Checkbox_);
     refBuilder->get_widget("threadLabel", threadLabel_);
-    refBuilder->get_widget("grid2", headerGrid_);
+    refBuilder->get_widget("request_tree_view", request_tree_view_);
+    refBuilder->get_widget("info_bar", info_bar_);
+    refBuilder->get_widget("status_bar", status_bar_);
+    refBuilder->get_widget("new_request_button", new_request_button);
 
-    lurkAdjustment_ = Glib::RefPtr<Gtk::Adjustment>::cast_static(refBuilder->get_object("lurkAdjustment"));
-    xAdjustment_ = Glib::RefPtr<Gtk::Adjustment>::cast_static(refBuilder->get_object("xAdjustment"));
-    yAdjustment_ = Glib::RefPtr<Gtk::Adjustment>::cast_static(refBuilder->get_object("yAdjustment"));
+    lurkAdjustment_ = Glib::RefPtr<Gtk::Adjustment>::cast_static(refBuilder->get_object("lurk_adjustment"));
+    xAdjustment_    = Glib::RefPtr<Gtk::Adjustment>::cast_static(refBuilder->get_object("width_adjustment"));
+    yAdjustment_    = Glib::RefPtr<Gtk::Adjustment>::cast_static(refBuilder->get_object("height_adjustment"));
 
-    headerGrid_->set_focus_chain({urlEntry_, fileChooserButton_, threadFolderEntry_, goButton_});
+    clear_action_       = Glib::RefPtr<Gtk::Action>::cast_static(refBuilder->get_object("clear_done_action"));
+    clear_action_->signal_activate().connect(sigc::mem_fun(*this, &Window_Gtk3::activate_clear));
+    new_request_action_ = Glib::RefPtr<Gtk::Action>::cast_static(refBuilder->get_object("new_request_action"));
+    new_request_action_->signal_activate().connect(sigc::mem_fun(*this, &Window_Gtk3::activate_new_request));
+
+    refBuilder->get_widget("primary_control_grid", headerGrid);
+    headerGrid->set_focus_chain({urlEntry_, fileChooserButton_, threadFolderEntry_, new_request_button});
 
     entryCompletion_->set_model(threadListStore_);
-    entryCompletion_->set_text_column(columns_.filename);
+    entryCompletion_->set_text_column(completion_columns_.filename);
     entryCompletion_->set_inline_completion(true);
     entryCompletion_->set_inline_selection(false);
     entryCompletion_->set_popup_completion(true);
     threadFolderEntry_->set_completion(entryCompletion_);
 
-    killmegif_ = get_animation_from_resource("/org/talinet/coldwind/KillMe.gif");
-    errorgif_  = get_animation_from_resource("/org/talinet/coldwind/error.gif");
-    fangpng_ = Glib::wrap(gdk_pixbuf_new_from_resource("/org/talinet/coldwind/fang.png", NULL));
-    image_->set(fangpng_);
+    auto renderer = Gtk::manage(new Gtk::CellRendererText());
+    renderer->property_ellipsize().set_value(Pango::ELLIPSIZE_END);
+    renderer->property_ellipsize_set().set_value(true);
+    auto column = Gtk::manage(new Gtk::TreeViewColumn("Thread", *renderer));
+    column->add_attribute(*renderer, "text", request_columns_.title);
+    column->set_sizing(Gtk::TREE_VIEW_COLUMN_GROW_ONLY);
+    column->set_resizable(true);
+    column->set_expand(true);
+
+    request_tree_view_->set_model(request_list_store_);
+    request_tree_view_->append_column(*column);
+    request_tree_view_->append_column("Replies", request_columns_.replies);
+    request_tree_view_->append_column("Images", request_columns_.images);
+    request_tree_view_->append_column("New", request_columns_.fetching);
+    request_tree_view_->append_column("Got", request_columns_.fetched);
+    request_tree_view_->append_column("Failed", request_columns_.errors);
+    request_tree_view_->append_column_numeric("MiB", request_columns_.megabytes_fetched, "%0.2f");
+    request_tree_view_->append_column("State", request_columns_.state);
+
 
     urlEntry_->get_buffer()->signal_inserted_text().connect( sigc::mem_fun(*this, &Derp::Window_Gtk3::on_url_entry) );
     boardDirCheckbox_->signal_toggled().connect( sigc::mem_fun(*this, &Derp::Window_Gtk3::on_board_toggled) );
     threadDirCheckbox_->signal_toggled().connect( sigc::mem_fun(*this, &Derp::Window_Gtk3::on_thread_toggled) );
     fileChooserButton_->signal_file_set().connect( sigc::mem_fun(*this, &Derp::Window_Gtk3::on_board_toggled) );
-
-    goButton_->signal_toggled().connect( sigc::mem_fun(*this, &Derp::Window_Gtk3::goButton_click));
 
     on_thread_toggled(); // Show/Hide the entryCompletion based on xml
 }
@@ -106,7 +131,7 @@ void Derp::Window_Gtk3::update_thread_dir_foreach_info(const Glib::RefPtr<Gio::A
     if (info_list.size() != 0) {
         for ( const auto & info : info_list ) {
             if (info->get_file_type() == Gio::FileType::FILE_TYPE_DIRECTORY) {
-                threadListStore_->append()->set_value(columns_.filename, Glib::ustring(info->get_display_name()));
+                threadListStore_->append()->set_value(completion_columns_.filename, Glib::ustring(info->get_display_name()));
             }
         }
         enumerator->next_files_async(sigc::bind(sigc::mem_fun(*this, &Derp::Window_Gtk3::update_thread_dir_foreach_info), enumerator));
@@ -154,95 +179,148 @@ void Derp::Window_Gtk3::update_thread_dir_completer() {
         }, completion_cancellable_, "standard::type,standard::display-name");
 }
 
-void Derp::Window_Gtk3::goButton_click() {
-  if (goButton_->get_active()) {
-    goButton_->set_active(false);
-
-    num_download_errors_ = 0;
-    bool is_accepted = signal_new_request({ urlEntry_->get_text(),
-	  fileChooserButton_->get_file(),
-	  threadFolderEntry_->get_text(),
-	  static_cast<int>(lurkAdjustment_->get_value()),
-	  static_cast<int>(xAdjustment_->get_value()),
-	  static_cast<int>(yAdjustment_->get_value()),
-	  boardDirCheckbox_->get_active(),
-	  threadDirCheckbox_->get_active(),
-	  originalFilenameCheckbox_->get_active(),
-	  lurk404Checkbox_->get_active()
-	  });
-    if (is_accepted) {
-      goButton_->set_sensitive(false);
-    }
-  }
-}
-
 void Derp::Window_Gtk3::run() {
 	show_all();
+    info_bar_->hide();
 }
 
 void Derp::Window_Gtk3::on_hide() {
 	Gtk::Window::on_hide();
 }
 
-void Derp::Window_Gtk3::starting_downloads(int num) {
-  if (num > 0) {
-    num_downloaded_ = 0;
-    num_downloading_ = num;
-    image_->set(killmegif_);
-    progress_ = 0.0;
-    update_progressBar();
-
-  } else {
-    std::cerr << "Unexpected call to starting downloads (0)?" << std::endl;
-  }
-}
-
-void Derp::Window_Gtk3::download_error(const Derp::Error& error) {
-  switch (error) {
-  case THREAD_404:
-    image_->set(errorgif_);
-    progressBar_->set_text("Thread has 404ed");
-    progressBar_->set_show_text(true);
-    progressBar_->set_fraction(1.0);
-    num_download_errors_++;
-    goButton_->set_sensitive(true);
-    break;
-  default:
-    num_download_errors_++;
-    image_->set(errorgif_);
-    update_progressBar();
-  }
-}
-
-void Derp::Window_Gtk3::download_finished() {
-    num_downloaded_++;
-    update_progressBar();
-}
-
-void Derp::Window_Gtk3::downloads_finished(int, const Request&) {
-  if (num_download_errors_ == 0) {
-    image_->set(fangpng_);
-  }
-
-  goButton_->set_sensitive(true);
-  update_progressBar();
-}
-
-void Derp::Window_Gtk3::update_progress(double progress)
+namespace Derp
 {
-	progress_ = progress;
-	update_progressBar();
-}
+    void
+    Window_Gtk3::activate_new_request()
+    {
+        Request request(urlEntry_->get_text(),
+                        fileChooserButton_->get_file(),
+                        threadFolderEntry_->get_text(),
+                        static_cast<int>(lurkAdjustment_->get_value()),
+                        static_cast<int>(xAdjustment_->get_value()),
+                        static_cast<int>(yAdjustment_->get_value()),
+                        boardDirCheckbox_->get_active(),
+                        threadDirCheckbox_->get_active(),
+                        originalFilenameCheckbox_->get_active(),
+                        lurk404Checkbox_->get_active());
+        signal_new_request(request);
+    }
+    
+    void
+    Window_Gtk3::activate_clear()
+    {
+        auto iter = request_list_store_->children().begin();
+        while (iter) {
+            if (iter->get_value(request_columns_.state) == "Done") {
+                iter = request_list_store_->erase(iter);
+            } else {
+                ++iter;
+            }
+        }
+    }
 
-void Derp::Window_Gtk3::update_progressBar() {
-	progressBar_->set_fraction( static_cast<float>(num_downloaded_ + num_download_errors_) / static_cast<float>(num_downloading_));
+    void
+    Window_Gtk3::request_changed_state (const std::shared_ptr<const ManagerResult>& result)
+    {
+        bool found_iter = false;
+        Gtk::TreeModel::iterator iter;
+        auto const id = result->request.get_request_id();
+        Glib::ustring title;
+        std::stringstream ss;
 
-	progressBar_->set_show_text(true);
-	std::stringstream st;
-	st << num_downloaded_ << " of " << num_downloading_ << " images downloaded";
-	if (num_download_errors_ > 0) 
-		st << ", " << num_download_errors_ << " error";
-	if (num_download_errors_ > 1)
-		st << "s";
-	progressBar_->set_text(st.str());
+        request_list_store_->foreach_iter([this, id, &result, &found_iter, &iter]
+                                          (const Gtk::TreeModel::iterator& i)
+                                          -> bool {
+                if (id == i->get_value(request_columns_.request_id)) {
+                    iter = i;
+                    found_iter = true;
+                    return true;
+                }
+                return false;
+            });
+        if (!found_iter) {
+            iter = request_list_store_->append();
+            ss << "/" << result->request.getBoard() << "/" << result->request.getThread();
+            title = ss.str();
+            iter->set_value(request_columns_.title, title);
+            iter->set_value(request_columns_.request_id, result->request.get_request_id());
+        }
+
+        std::size_t num_downloading;
+        std::size_t counted_errors;
+        std::size_t errors;
+        std::string subject;
+        gint images;
+        switch (result->state) {
+            case ManagerResult::HASHING:
+                iter->set_value(request_columns_.state, Glib::ustring("Hashing"));
+                break;
+            case ManagerResult::PARSING:
+                iter->set_value(request_columns_.state, Glib::ustring("Parsing"));
+                break;
+            case ManagerResult::DOWNLOADING:
+                iter->set_value(request_columns_.state, Glib::ustring("Downloading"));
+                errors = iter->get_value(request_columns_.errors);
+                counted_errors = iter->get_value(request_columns_.counted_errors);
+                num_downloading = iter->get_value(request_columns_.fetching);
+                num_downloading += result->num_downloading - (errors - counted_errors);
+                iter->set_value(request_columns_.counted_errors, errors);
+                iter->set_value(request_columns_.fetching, num_downloading);
+                if (result->op) {
+                    images = result->op->get_images();
+                    images += (result->op->has_image()&&!result->op->is_deleted())?1:0;
+                    iter->set_value(request_columns_.replies, result->op->get_replies());
+                    iter->set_value(request_columns_.images, images);
+                    subject = result->op->get_subject();
+                    if (subject.size() > 0) {
+                        ss << subject << " (/" << result->request.getBoard() << "/" << result->request.getThread() << ")";
+                        title = ss.str();
+                        iter->set_value(request_columns_.title, title);
+                    }
+                }
+                break;
+            case ManagerResult::LURKING:
+                iter->set_value(request_columns_.state, Glib::ustring("Lurking"));
+                break;
+            case ManagerResult::DONE:
+                iter->set_value(request_columns_.state, Glib::ustring("Done"));
+                break;
+            case ManagerResult::ERROR:
+                iter->set_value(request_columns_.state, Glib::ustring("Error"));
+                break;
+            default:
+                break;
+        }
+    }
+
+    void
+    Window_Gtk3::request_download_complete (const std::shared_ptr<const ManagerResult>& result)
+    {
+        request_list_store_->foreach_iter([this, &result](const Gtk::TreeModel::iterator& iter)->bool{
+                auto id = result->request.get_request_id();
+                if (id == iter->get_value(request_columns_.request_id)) {
+                    if (result->had_error) {
+                        auto errors = iter->get_value(request_columns_.errors);
+                        iter->set_value(request_columns_.errors, ++errors);
+                        std::cerr << "Error: " << result->info.error_str << std::endl;
+                    } else {
+                        auto downloaded = iter->get_value(request_columns_.fetched);
+                        ++downloaded;
+                        iter->set_value(request_columns_.fetched, downloaded);
+                        auto bytes = iter->get_value(request_columns_.megabytes_fetched);
+                        bytes += (result->info.size / (1024. * 1024.));
+                        iter->set_value(request_columns_.megabytes_fetched, bytes);
+                    }
+                    return true;
+                } else {
+                    return false;
+                }
+            });
+    }
+
+    void
+    Window_Gtk3::request_error (const std::shared_ptr<const ManagerResult>& result)
+    {
+        std::cerr << "Error: " << result->error_str << std::endl;
+    }
 }

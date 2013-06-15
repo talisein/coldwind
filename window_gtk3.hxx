@@ -9,6 +9,9 @@
 #include <gtkmm/progressbar.h>
 #include <gdkmm/pixbufanimation.h>
 #include <gtkmm/entrycompletion.h>
+#include <gtkmm/treeview.h>
+#include <gtkmm/statusbar.h>
+#include <gtkmm/infobar.h>
 #include <gtkmm.h>
 #include "config.h"
 
@@ -19,59 +22,75 @@ namespace Derp {
 		Window_Gtk3(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& refGlade);
 		virtual ~Window_Gtk3();
 
-		virtual void download_finished();
-		virtual void downloads_finished(int num, const Request& request);
-		virtual void starting_downloads(int num);
-		virtual void download_error(const Derp::Error&);
-		virtual void update_progress(double);
 		virtual void run();
 
 	private:
 		sigc::signal<bool, const Request&> signal_go_;
-		int num_downloading_;
-		int num_downloaded_;
-		int num_download_errors_;
-		double progress_;
 
 		void on_url_entry(guint, const gchar*, guint);
 		void on_board_toggled();
 		void on_thread_toggled();
-		void goButton_click();
-		void update_progressBar();
-		
+        
+        void activate_new_request();
+        void activate_clear();
+
 		virtual void on_hide();
 
 		void update_thread_dir_completer();
         void update_thread_dir_foreach_info(const Glib::RefPtr<Gio::AsyncResult>&,
                                             Glib::RefPtr<Gio::FileEnumerator>&);
-		Gtk::Image* image_;
-		Gtk::ProgressBar* progressBar_;
-		Gtk::ToggleButton* goButton_;
-		Gtk::Entry* urlEntry_;
-		Gtk::Entry* threadFolderEntry_;
-		Gtk::Label* threadLabel_;
+
+        virtual void request_changed_state    (const std::shared_ptr<const ManagerResult>& result) override;
+        virtual void request_download_complete(const std::shared_ptr<const ManagerResult>& result) override;
+        virtual void request_error            (const std::shared_ptr<const ManagerResult>& result) override;
+
+        
 		Gtk::FileChooserButton* fileChooserButton_;
 		Gtk::CheckButton* boardDirCheckbox_;
 		Gtk::CheckButton* threadDirCheckbox_;
 		Gtk::CheckButton* originalFilenameCheckbox_;
 		Gtk::CheckButton* lurk404Checkbox_;
-		Gtk::Grid* headerGrid_;
-		Glib::RefPtr<Gdk::PixbufAnimation> killmegif_;
-		Glib::RefPtr<Gdk::PixbufAnimation> errorgif_;
-		Glib::RefPtr<Gdk::Pixbuf> fangpng_;
+        Gtk::Statusbar* status_bar_;
+        Gtk::TreeView* request_tree_view_;
+        Gtk::InfoBar* info_bar_;
+		Gtk::Entry* urlEntry_;
+		Gtk::Entry* threadFolderEntry_;
+		Gtk::Label* threadLabel_;
+
 		Glib::RefPtr<Gtk::Adjustment> lurkAdjustment_;
 		Glib::RefPtr<Gtk::Adjustment> xAdjustment_;
 		Glib::RefPtr<Gtk::Adjustment> yAdjustment_;
+
+		Glib::RefPtr<Gtk::Action> clear_action_;
+		Glib::RefPtr<Gtk::Action> new_request_action_;
 
         class ThreadDirColumns : public Gtk::TreeModel::ColumnRecord {
         public:
             Gtk::TreeModelColumn<Glib::ustring> filename;
             ThreadDirColumns() { add(filename); };
-        } columns_;
+        } completion_columns_;
 		Glib::RefPtr<Gtk::EntryCompletion> entryCompletion_;
 		Glib::RefPtr<Gtk::ListStore> threadListStore_;
         Glib::RefPtr<Gio::Cancellable> completion_cancellable_;
 
+        class RequestColumns : public Gtk::TreeModel::ColumnRecord {
+        public:
+            Gtk::TreeModelColumn<std::size_t> request_id;
+            Gtk::TreeModelColumn<Glib::ustring> title;
+            Gtk::TreeModelColumn<gint> replies;
+            Gtk::TreeModelColumn<gint> images;
+            Gtk::TreeModelColumn<std::size_t> fetching;
+            Gtk::TreeModelColumn<std::size_t> fetched;
+            Gtk::TreeModelColumn<std::size_t> errors;
+            Gtk::TreeModelColumn<std::size_t> counted_errors;
+            Gtk::TreeModelColumn<float> megabytes_fetched;
+            Gtk::TreeModelColumn<Glib::ustring> state;
+            RequestColumns() { add(request_id); add(title);
+                add(replies); add(images); add(fetching);
+                add(fetched); add(errors); add(counted_errors);
+                add(megabytes_fetched); add(state); };
+        } request_columns_;
+        Glib::RefPtr<Gtk::ListStore> request_list_store_;
 	};
 
 }

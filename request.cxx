@@ -1,17 +1,18 @@
 #include "request.hxx"
+#include <atomic>
 #include <iostream>
 #include <glibmm/convert.h>
 
 Derp::Request::Request(const Glib::ustring& thread_url,
 		       const Glib::RefPtr<Gio::File>& target_directory,
 		       const Glib::ustring& thread_directory,
-		       const int& minutes,
-		       const int& xDim,
-		       const int& yDim,
-		       const bool& useBoardSubdir,
-		       const bool& useThreadSubdir,
-		       const bool& useOriginalFilename,
-		       const bool& lurkTo404) :
+		       const int minutes,
+		       const int xDim,
+		       const int yDim,
+		       const bool useBoardSubdir,
+		       const bool useThreadSubdir,
+		       const bool useOriginalFilename,
+		       const bool lurkTo404) :
   thread_url_(thread_url),
   target_directory_(target_directory),
   thread_directory_(thread_directory),
@@ -24,10 +25,14 @@ Derp::Request::Request(const Glib::ustring& thread_url,
   lurkTo404_(lurkTo404),
   is404_(false)
 {
+    static std::atomic<std::size_t> global_counter(0);
+    ++global_counter;
+
+    request_id = global_counter;
 }
 
-void Derp::Request::decrementMinutes() {
-  minutes_--;
+void Derp::Request::decrementMinutes(int mins) {
+  minutes_ -= mins;
 }
 
 bool Derp::Request::isExpired() const {
@@ -72,8 +77,6 @@ bool Derp::Request::useOriginalFilename() const {
   return useOriginalFilename_;
 }
 
-
-
 Glib::ustring Derp::Request::getBoard() const {
   Glib::ustring string(thread_url_.substr(0, thread_url_.find_last_of("/res/") - 4));
   string = string.substr(string.find_last_of("/") + 1);
@@ -85,6 +88,12 @@ Glib::ustring Derp::Request::getThread() const {
 }
 
 namespace Derp {
+    std::size_t
+    Request::get_request_id() const
+    {
+        return request_id;
+    }
+
     std::string
     Request::get_api_url() const
     {

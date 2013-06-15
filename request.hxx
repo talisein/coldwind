@@ -12,15 +12,15 @@ namespace Derp {
 		Request(const Glib::ustring& thread_url,
 		        const Glib::RefPtr<Gio::File>& target_directory,
 		        const Glib::ustring& thread_directory,
-		        const int& minutes,
-		        const int& xDim,
-		        const int& yDim,
-		        const bool& useBoardSubdir,
-		        const bool& useThreadSubdir,
-		        const bool& useOriginalFilename,
-		        const bool& lurk404);
+		        const int minutes,
+		        const int xDim,
+		        const int yDim,
+		        const bool useBoardSubdir,
+		        const bool useThreadSubdir,
+		        const bool useOriginalFilename,
+		        const bool lurk404);
 		Request() = default;
-
+        
 		Glib::RefPtr<Gio::File> getDirectory() const;
 		Glib::RefPtr<Gio::File> getHashDirectory() const;
 		Glib::ustring getBoard() const;
@@ -28,15 +28,17 @@ namespace Derp {
 		Glib::ustring getUrl() const;
         std::string get_api_url() const;
         guint64 get_thread_id() const;
+        std::size_t get_request_id() const;
 
 		bool isExpired() const;
-		void decrementMinutes();
+		void decrementMinutes(int mins = 1);
 		void mark404();
 		bool useOriginalFilename() const;
 
         int get_min_width() const { return xDim_; };
         int get_min_height() const { return yDim_; };
 	private:
+        std::size_t request_id;
 		Glib::ustring thread_url_;
 		Glib::RefPtr<Gio::File> target_directory_;
 		Glib::ustring thread_directory_;

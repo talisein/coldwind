@@ -218,18 +218,18 @@ namespace Derp {
     {
         auto share = std::make_shared<CurlShare>();
         for(int i = 0; i < max_connections; ++i) {
-            m_curl_queue.emplace(new CurlEasy(share));
+            m_curl_stack.emplace(new CurlEasy(share));
         }
     }
 
     void CurlMulti::start_download_from_queue()
     {
-        while (!m_curl_queue.empty()) {
+        while (!m_curl_stack.empty()) {
             if (m_request_queue.empty()) {
                 break;
             } else {
                 auto fn = m_request_queue.front(); m_request_queue.pop();
-                auto curl = std::move(m_curl_queue.front()); m_curl_queue.pop();
+                auto curl = std::move(m_curl_stack.top()); m_curl_stack.pop();
                 fn(curl);
                 m_active_curls.push_back(std::move(curl));
             }
@@ -244,14 +244,14 @@ namespace Derp {
         cb(std::move(result), std::move(info));
 
         std::lock_guard<std::mutex> lock(m_mutex);
-        /* Move the curl handle back to m_curl_queue */
+        /* Move the curl handle back to m_curl_stack */
         auto iter = std::find_if(m_active_curls.begin(),
                                  m_active_curls.end(),
                                  [&curl](const std::unique_ptr<CurlEasy>& easy){
                                      return easy.get() == curl;
                                  });
         if (G_LIKELY( iter != m_active_curls.end() )) {
-            m_curl_queue.push(std::move(*iter));
+            m_curl_stack.push(std::move(*iter));
             m_active_curls.erase(iter);
             /* Check for pending requests */
             if (!m_request_queue.empty())
@@ -274,7 +274,7 @@ namespace Derp {
                                                std::placeholders::_2),
                                      size_hint);
             });
-        if (!m_curl_queue.empty())
+        if (!m_curl_stack.empty())
             start_download_from_queue();
     }
                       

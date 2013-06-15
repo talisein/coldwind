@@ -6,15 +6,8 @@ Derp::Application::Application(int argc, char* argv[]) :
 	                 argv,
 	                 "org.talinet.coldwind",
 	                 Gio::APPLICATION_FLAGS_NONE),
-	LURKER_TIMEOUT_SECS(60),
-    manager_(std::make_shared<Manager>()),
-	window_(manager_),
-	lurker_(manager_)
+	window_(std::make_shared<Manager>())
 {
-	Glib::signal_timeout().connect_seconds(sigc::bind_return(sigc::mem_fun(lurker_, &Derp::Lurker::run), true), LURKER_TIMEOUT_SECS);
-
-	window_.signal_new_request.connect(sigc::mem_fun(lurker_, 
-	                                                 &Derp::Lurker::add_async));
 	signal_startup().connect(sigc::mem_fun(*this, &Derp::Application::on_my_startup));
 }
 

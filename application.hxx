@@ -14,11 +14,9 @@ namespace Derp {
 		void run();
 
 	private:
-		const int LURKER_TIMEOUT_SECS;
 		void on_my_startup();
-        std::shared_ptr<Manager> manager_;
+
 		Derp::Window window_;
-		Derp::Lurker lurker_;
 	};
 }
 #endif

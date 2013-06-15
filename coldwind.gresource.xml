@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
   <gresource prefix="/org/talinet/coldwind">
-    <file>error.gif</file>
-    <file>fang.png</file>
-    <file>KillMe.gif</file>
     <file preprocess="xml-stripblanks">overEngineering.glade</file>
   </gresource>
 </gresources>

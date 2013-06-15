@@ -15,17 +15,17 @@
 namespace Derp {
     Hasher::Hasher()
     {
-        active.send([this]{ load_from_disk(); });
+        active.emplace([this]{ load_from_disk(); });
     }
 
     Hasher::~Hasher()
     {
-        active.send([this]{ save_to_disk(); });
+        save_to_disk();
     }
 
     void Hasher::hash_async(const Request& request, const HasherCallback& cb)
     {
-        active.send([this, request, cb]{ hash(request, cb); });
+        active.emplace([this, request, cb]{ hash(request, cb); });
     }
 
     void Hasher::hash(const Request& request, const HasherCallback& cb)
@@ -54,22 +54,25 @@ namespace Derp {
             board_enumerator->close();
         }
 
-        active.send([this, cb]{ m_dispatcher(cb); });
+        active.emplace([this, cb]{ m_dispatcher(cb); });
     }
 
     void Hasher::hash_directory(const Glib::RefPtr<Gio::File>& dir)
     {
-        auto enumerator = dir->enumerate_children("standard::type,standard::name,standard::size");
+        auto enumerator = dir->enumerate_children("standard::type,standard::name,standard::content-type");
+        const std::string image_type("image/");
+
         for(auto info = enumerator->next_file(); info; info = enumerator->next_file()) {
             if ( info->get_file_type() != Gio::FileType::FILE_TYPE_REGULAR )
                 continue;
-            if ( info->get_size() > MAXIMUM_FILESIZE )
+
+            auto content_type = info->get_content_type();
+            if (content_type.compare(0, image_type.size(), image_type) != 0)
                 continue;
 
             auto file = dir->get_child(info->get_name());
-            if (!has_file_path(file->get_path())) {
-                auto path = file->get_path();
-                active.send([this, file]{ hash_file(file); });
+            if (!has_file_path(file->get_parse_name())) {
+                active.emplace([this, file]{ hash_file(file); });
             }
         }
         enumerator->close();
@@ -85,10 +88,10 @@ namespace Derp {
             auto md5hex = Glib::Checksum::compute_checksum(Glib::Checksum::ChecksumType::CHECKSUM_MD5,
                                                            reinterpret_cast<guchar*>(contents),
                                                            length);
-            insert_md5(md5hex, file->get_path());
+            insert_md5(md5hex, file->get_parse_name());
             g_free(contents);
         } catch (Gio::Error e) {
-            std::cerr << "Error: While trying to load and hash " << file->get_path()
+            std::cerr << "Error: While trying to load and hash " << file->get_parse_name()
                       << ": " << e.what() << " Code: " << e.code() <<std::endl;
         }
     }
@@ -124,14 +127,14 @@ namespace Derp {
                     dirfile->make_directory_with_parents();
                 } catch (Gio::Error e) {
                     std::cerr << "Hasher Error: Unable to create directory "
-                              << dirfile->get_path() << ": " << e.what()
+                              << dirfile->get_parse_name() << ": " << e.what()
                               << std::endl;
                 }
             }
 
             auto info = dirfile->query_info(G_FILE_ATTRIBUTE_STANDARD_TYPE);
             if (info->get_file_type() != Gio::FILE_TYPE_DIRECTORY) {
-                std::cerr << "Hasher Error: " << dirfile->get_path()
+                std::cerr << "Hasher Error: " << dirfile->get_parse_name()
                           << " is not a directory. Will be unable to cache hashed file"
                           << " list to disk." << std::endl;
             }
@@ -150,7 +153,7 @@ namespace Derp {
         } catch (Gio::Error e) {
             if (e.code() == Gio::Error::NOT_FOUND)
                 return;
-            std::cerr << "Hasher Error: Could not load " << file->get_path()
+            std::cerr << "Hasher Error: Could not load " << file->get_parse_name()
                       << ": " << e.what() << std::endl;
             return;
         }
@@ -179,11 +182,11 @@ namespace Derp {
                     if (node == HASH_NODE) {
                         hash = reader.get_value();
                     } else if (node == PATH_NODE) {
-                        auto path = reader.get_value();
-                        auto file = Gio::File::create_for_path(path);
+                        auto parse_name = reader.get_value();
+                        auto file = Gio::File::create_for_parse_name(parse_name);
                         if (file->query_exists()) {
-                            m_hash_table.insert(std::make_pair(hash, path));
-                            m_filepath_table.insert(path);
+                            m_hash_table.insert(std::make_pair(hash, parse_name));
+                            m_filepath_table.insert(parse_name);
                         }
                     } else if (node == SIZE_NODE) {
                         auto size = std::stoull(reader.get_value());

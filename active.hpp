@@ -4,7 +4,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <functional>
-#include <queue>
+#include <deque>
 
 namespace Derp {
 
@@ -12,11 +12,26 @@ namespace Derp {
     public:
         message_queue<T>() = default;
 
-        void push(T&& t) {
+        template <typename U>
+        void push(U&& u) {
             std::lock_guard<std::mutex> lock(m);
-            queue.push(std::forward<T>(t));
+            queue.push_back(std::forward<U>(u));
             cond.notify_one();
-        };
+        }
+
+        template <typename U>
+        void push_front(U&& u) {
+            std::lock_guard<std::mutex> lock(m);
+            queue.push_front(std::forward<U>(u));
+            cond.notify_one();
+        }
+
+        template <typename... Args>
+        void emplace(Args&&... args) {
+            std::lock_guard<std::mutex> lock(m);
+            queue.emplace_back(std::forward<Args>(args)...);
+            cond.notify_one();
+        }
             
         T pop() {
             std::unique_lock<std::mutex> lock(m);
@@ -24,12 +39,12 @@ namespace Derp {
                 cond.wait(lock);
             }
             auto front = std::move(queue.front());
-            queue.pop();
+            queue.pop_front();
             return front;
         };
 
     private:
-        std::queue<T> queue;
+        std::deque<T> queue;
         std::mutex m;
         std::condition_variable cond;
     };
@@ -39,7 +54,7 @@ namespace Derp {
         typedef std::function<void()> Message;
         Active( const Active& ) = delete;
         void operator=( const Active& ) = delete;
- 
+
     private:
         bool done;
         message_queue<Message> mq;
@@ -48,19 +63,17 @@ namespace Derp {
         void Run() {
             while( !done ) {
                 mq.pop()();
-                //auto msg = mq.pop();
-                //msg();            // execute message
             } // note: last message sets done to true
         }
  
     public:
          Active() : done(false) {
             thd = std::unique_ptr<std::thread>(
-                new std::thread( [=]{ this->Run(); } ) );
+                new std::thread( std::mem_fn(&Active::Run), this ) );
         }
  
         ~Active() {
-            send( [&]{ done = true; } ); ;
+            send_priority( [&]{ done = true; } ); ;
             thd->join();
         }
  
@@ -68,6 +81,15 @@ namespace Derp {
         void send( Functor&& m ) {
             mq.push( std::forward<Functor>(m) );
         }
-    };
 
+        template <typename Functor>
+        void send_priority( Functor&& m) {
+            mq.push_front( std::forward<Functor>(m) );
+        }
+
+        template <typename... Args>
+        void emplace(Args&&... args) {
+            mq.emplace(std::forward<Args>(args)...);
+        }
+    };
 }

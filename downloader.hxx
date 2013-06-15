@@ -2,8 +2,9 @@
 #define DOWNLOADER_HXX
 
 #include <memory>
+#include <vector>
+#include <stack>
 #include <queue>
-#include <deque>
 #include <mutex>
 #include <map>
 #include <curl/curl.h>
@@ -154,10 +155,10 @@ namespace Derp {
         /** Lock access to the queues allowing download_url_async to
          * be called from any thread.
          */
-        mutable std::mutex                    m_mutex;
-        std::queue<std::unique_ptr<CurlEasy>> m_curl_queue;
-        std::deque<std::unique_ptr<CurlEasy>> m_active_curls;
-        std::queue<Request>                   m_request_queue;
+        mutable std::mutex                     m_mutex;
+        std::stack<std::unique_ptr<CurlEasy>>  m_curl_stack;
+        std::vector<std::unique_ptr<CurlEasy>> m_active_curls;
+        std::queue<Request>                    m_request_queue;
     };
 
     /** Downloads url to filename in target_dir.

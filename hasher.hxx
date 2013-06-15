@@ -46,7 +46,6 @@ namespace Derp {
         void save_to_disk() const;
 
     private:
-        static constexpr goffset MAXIMUM_FILESIZE = 5100 * 1000;
         Hasher& operator=(const Hasher&) = delete;
         Hasher(const Hasher&) = delete;
 

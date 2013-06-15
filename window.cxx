@@ -22,7 +22,7 @@ Derp::WindowImpl* Derp::Window::createWindowImpl() {
 		GtkBuilder* cbuilder = gtk_builder_new();
 		gtk_builder_add_from_resource(cbuilder, "/org/talinet/coldwind/overEngineering.glade", NULL);
 		Glib::RefPtr<Gtk::Builder> refBuilder = Glib::wrap(cbuilder);
-		refBuilder->get_widget_derived("mainWindow", impl);
+		refBuilder->get_widget_derived("coldwind_main_window", impl);
 		impl->signal_new_request.connect( sigc::mem_fun(*this, &Derp::Window::startManager) );
 
 	} catch (const Glib::FileError& ex) {
@@ -53,12 +53,6 @@ bool Derp::Window::startManager(const Request& request) {
     return is_accepted;
 }
 
-void Derp::Window::onDownloadsFinished(int, const Derp::Request& request) {
-	if (!request.isExpired()) {
-		signal_new_request(request);
-	}
-}
-
 namespace Derp {
     void
     Window::manager_cb(const std::shared_ptr<const ManagerResult>& result)
@@ -66,27 +60,31 @@ namespace Derp {
         switch (result->state) {
             case ManagerResult::HASHING:
             case ManagerResult::PARSING:
+                if (result->had_error) {
+                    uwindowImpl_->request_error(result);
+                } else {
+                    uwindowImpl_->request_changed_state(result);
+                }
+                break;
             case ManagerResult::LURKING:
+                uwindowImpl_->request_changed_state(result);
                 break;
             case ManagerResult::DOWNLOADING:
-                if (result->had_error) {
-                    uwindowImpl_->download_error(result->error_code);
-                } else if (result->num_downloaded > 0) {
-                    uwindowImpl_->download_finished();
-                } else {
-                    uwindowImpl_->starting_downloads(result->num_downloading);
-                }
+                    if (result->num_downloaded == 0 && result->num_download_errors == 0 ) {
+                        uwindowImpl_->request_changed_state(result);
+                    } else {
+                        uwindowImpl_->request_download_complete(result);
+                    }
                 break;
             case ManagerResult::DONE:
                 if (result->had_error) {
-                    uwindowImpl_->download_error(result->error_code);
+                    uwindowImpl_->request_error(result);
                 } else {
-                    uwindowImpl_->downloads_finished(result->num_downloaded, result->request);
-                    onDownloadsFinished(result->num_downloaded, result->request);
+                    uwindowImpl_->request_changed_state(result);
                 }
                 break;
             case ManagerResult::ERROR:
-                uwindowImpl_->download_error(result->error_code);
+                uwindowImpl_->request_error(result);
                 break;
         }
     }

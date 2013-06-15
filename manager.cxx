@@ -1,6 +1,11 @@
 #include <iostream>
 #include "manager.hxx"
 #include "post.hpp"
+#include <glibmm/main.h>
+
+namespace sigc {
+    SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
+}
 
 namespace Derp {
 
@@ -18,6 +23,15 @@ namespace Derp {
         m_downloader(std::make_shared<Downloader>()),
         m_json_parser(m_downloader)
     {
+        m_lurk_connection = Glib::signal_timeout().connect_seconds(sigc::mem_fun(*this,
+                                                                                 &Manager::lurk),
+                                                                   LURK_INTERVAL_MINUTES * 60,
+                                                                   Glib::PRIORITY_LOW);
+    }
+
+    Manager::~Manager()
+    {
+        m_lurk_connection.disconnect();
     }
 
     bool
@@ -57,6 +71,7 @@ namespace Derp {
             switch (parser_result.error_code) {
                 case ParserResult::THREAD_404_ERROR:
                     result->error_code = Error::THREAD_404;
+                    result->request.mark404();
                     break;
                 case ParserResult::DOWNLOAD_ERROR:
                     result->error_code = Error::THREAD_CURL_ERROR;
@@ -68,6 +83,7 @@ namespace Derp {
                     break;
             }
             cb(result);
+            request_complete(result, cb);
             return;
         }
 
@@ -84,20 +100,22 @@ namespace Derp {
         result->num_downloading = std::count_if(posts.begin(),
                                                 posts.end(),
                                                 is_valid);
+
+        result->state = ManagerResult::DOWNLOADING;
         cb(result);
+
+        if (result->num_downloading == 0) {
+            if (result->op->get_imagelimit()) {
+                result->request.mark404();
+            }
+            request_complete(result, cb);
+        }
+                                                  
         auto callback = std::bind(&Manager::download_complete_cb,
                                   this,
                                   std::placeholders::_1,
                                   result,
                                   cb);
-        if (result->num_downloading == 0) {
-            result->state = ManagerResult::DONE;
-            cb(result);
-        } else {
-            result->state = ManagerResult::DOWNLOADING;
-            cb(result);
-        }
-                                                  
         for (auto const & post : posts) {
             if (is_valid(post)) {
                 std::string filename;
@@ -133,8 +151,68 @@ namespace Derp {
         cb(result);
 
         if (result->num_downloading == (result->num_downloaded + result->num_download_errors)) {
-            result->state = ManagerResult::DONE;
-            cb(result);
+            request_complete(result, cb);
         }
+    }
+
+    void
+    Manager::request_complete(const std::shared_ptr<ManagerResult>& result,
+                              const ManagerCallback& cb)
+    {
+        result->had_error = false;
+
+        auto pair = std::make_pair(result->request, cb);
+        auto iter = m_lurk_list.find(pair);
+        if (iter != m_lurk_list.end()) {
+            if (iter->first.get_request_id() != result->request.get_request_id()) {
+                auto res = std::make_shared<ManagerResult>();
+                res->state = ManagerResult::DONE;
+                res->request = iter->first;
+                iter->second(res);
+            }
+            m_lurk_list.erase(iter);
+        }
+
+        if (result->request.isExpired()) {
+            result->state = ManagerResult::DONE;
+        } else {
+            result->state = ManagerResult::LURKING;
+            m_lurk_list.insert(std::move(pair));
+        }
+
+        cb(result);
+    }
+
+    bool
+    Manager::lurk()
+    {
+        std::vector<lurk_pair_t> worklist;
+        worklist.reserve(m_lurk_list.size());
+        for ( auto & pair : m_lurk_list ) {
+            auto request = pair.first;
+            request.decrementMinutes(LURK_INTERVAL_MINUTES);
+            worklist.push_back(std::make_pair(request, pair.second));
+        }
+
+        if (worklist.size() > 0) {
+            auto fn = sigc::bind(sigc::mem_fun(*this, &Manager::lurk_cooldown), worklist);
+            Glib::signal_timeout().connect_seconds(fn, 5, Glib::PRIORITY_LOW);
+        }
+
+        return G_SOURCE_CONTINUE;
+    }
+
+    bool
+    Manager::lurk_cooldown(std::vector<Manager::lurk_pair_t>& list) 
+    {
+        if (list.size() > 0) {
+            download_async(list.back().first, list.back().second);
+            list.pop_back();
+        }
+                
+        if (list.size() > 0)
+            return G_SOURCE_CONTINUE;
+        else
+            return G_SOURCE_REMOVE;
     }
 }

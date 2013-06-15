@@ -28,8 +28,6 @@ namespace Derp {
 
 		bool startManager(const Request&);
 
-		void onDownloadsFinished(int num, const Request& request);
-
         void manager_cb(const std::shared_ptr<const ManagerResult>& result);
 	};
 }
