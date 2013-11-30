@@ -50,7 +50,8 @@ namespace Derp {
                 result.error_code = ParserResult::THREAD_404_ERROR;
             } else {
                 std::stringstream ss;
-                ss << "HTTP Error " << info.error_code;
+                ss << "HTTP Error " << info.error_code << " \"" << info.error_str << "\"";
+                ss << std::endl << "URL: " << info.url << std::endl;
                 result.error_str = ss.str();
                 result.error_code = ParserResult::DOWNLOAD_ERROR;
             }

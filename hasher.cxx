@@ -6,6 +6,7 @@
 #include <glibmm/convert.h>
 #include <glibmm/checksum.h>
 #include <glibmm.h>
+#include <array>
 #include <iostream>
 #include "request.hxx"
 #include "config.h"
@@ -59,18 +60,23 @@ namespace Derp {
 
     void Hasher::hash_directory(const Glib::RefPtr<Gio::File>& dir)
     {
-        auto enumerator = dir->enumerate_children("standard::type,standard::name,standard::content-type");
-        const std::string image_type("image/");
+        constexpr std::array<char, 7> image_type{"image/"};
+        constexpr auto image_type_len = image_type.size() - 1;
+        auto enumerator = dir->enumerate_children("standard::type,standard::name,standard::fast-content-type");
 
         for(auto info = enumerator->next_file(); info; info = enumerator->next_file()) {
             if ( info->get_file_type() != Gio::FileType::FILE_TYPE_REGULAR )
                 continue;
 
-            auto content_type = info->get_content_type();
-            if (content_type.compare(0, image_type.size(), image_type) != 0)
+            auto content_type = info->get_attribute_string(G_FILE_ATTRIBUTE_STANDARD_FAST_CONTENT_TYPE);
+            if (content_type.compare(0, image_type_len, image_type.data(), image_type_len) != 0)
                 continue;
 
+            #if GLIB_CHECK_VERSION(2,36,0)
+            auto file = enumerator->get_child(info);
+            #else
             auto file = dir->get_child(info->get_name());
+            #endif
             if (!has_file_path(file->get_parse_name())) {
                 active.emplace([this, file]{ hash_file(file); });
             }

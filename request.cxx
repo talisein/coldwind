@@ -78,7 +78,7 @@ bool Derp::Request::useOriginalFilename() const {
 }
 
 Glib::ustring Derp::Request::getBoard() const {
-  Glib::ustring string(thread_url_.substr(0, thread_url_.find_last_of("/res/") - 4));
+  Glib::ustring string(thread_url_.substr(0, thread_url_.find_last_of('/') - 4));
   string = string.substr(string.find_last_of("/") + 1);
   return string;
 }

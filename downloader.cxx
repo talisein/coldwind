@@ -167,7 +167,9 @@ namespace Derp {
         check_code(code);
         code = curl_easy_setopt(m_curl.get(), CURLOPT_SHARE, m_share->m_share.get());
         check_code(code);
-
+        code = curl_easy_setopt(m_curl.get(), CURLOPT_USERAGENT, "coldwind/1.0 (linux)");
+        check_code(code);
+        
         if (setup_ok) {
             return buffer;
         } else {
