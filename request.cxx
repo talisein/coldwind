@@ -2,6 +2,7 @@
 #include <atomic>
 #include <iostream>
 #include <glibmm/convert.h>
+#include <cstring>
 
 Derp::Request::Request(const Glib::ustring& thread_url,
 		       const Glib::RefPtr<Gio::File>& target_directory,
@@ -78,13 +79,30 @@ bool Derp::Request::useOriginalFilename() const {
 }
 
 Glib::ustring Derp::Request::getBoard() const {
-  Glib::ustring string(thread_url_.substr(0, thread_url_.find_last_of('/') - 4));
-  string = string.substr(string.find_last_of("/") + 1);
-  return string;
+    auto endpos = thread_url_.find("/thread/");
+    if (endpos != Glib::ustring::npos) {
+        auto pos = thread_url_.find_last_of("/", endpos-1);
+        if (pos != Glib::ustring::npos) {
+            pos += 1;
+            return thread_url_.substr(pos, endpos - pos);
+        }
+    }
+    return Glib::ustring();
 }
 
 Glib::ustring Derp::Request::getThread() const {
-  return thread_url_.substr(thread_url_.find_last_of("/") + 1);
+    constexpr size_t threadlen = std::strlen("/thread/");
+    auto pos = thread_url_.find("/thread/");
+    if (pos != Glib::ustring::npos) {
+        pos += threadlen;
+        auto endpos = thread_url_.find("/", pos);
+        if (endpos != Glib::ustring::npos) {
+            return thread_url_.substr(pos, endpos - pos);
+        } else {
+            return thread_url_.substr(pos);
+        }
+    }
+    return Glib::ustring();
 }
 
 namespace Derp {
@@ -100,7 +118,7 @@ namespace Derp {
         std::stringstream ss;
         ss << "http://api.4chan.org/";
         ss << getBoard();
-        ss << "/res/";
+        ss << "/thread/";
         auto number = getThread();;
         ss << number.substr(0, number.find_first_not_of("0123456789"));
         ss << ".json";

@@ -894,7 +894,7 @@ horizon_post_get_thumb_url (HorizonPost *post) {
 	if (!post->priv->thumb_url) {
 		g_return_val_if_fail(post->priv->board, NULL);
 
-		post->priv->thumb_url = g_strdup_printf("http://t.4cdn.org/%s/thumb/%"
+		post->priv->thumb_url = g_strdup_printf("http://t.4cdn.org/%s/%"
 		                                        G_GINT64_FORMAT
 		                                        "s.jpg",
 		                                        post->priv->board,
@@ -921,7 +921,7 @@ horizon_post_get_image_url (HorizonPost *post) {
 	if (!post->priv->image_url) {
 		g_return_val_if_fail(post->priv->board, NULL);
 
-		post->priv->image_url = g_strdup_printf("http://i.4cdn.org/%s/src/"
+		post->priv->image_url = g_strdup_printf("http://i.4cdn.org/%s/"
 		                                        "%"G_GINT64_FORMAT
 		                                        "%s",
 		                                        post->priv->board,
