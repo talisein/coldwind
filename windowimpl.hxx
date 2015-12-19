@@ -3,8 +3,6 @@
 
 #include <sigc++/signal.h>
 #include <memory>
-//#include "request.hxx"
-#include "manager.hxx"
 
 namespace Derp {
 

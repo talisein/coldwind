@@ -59,40 +59,33 @@ namespace Derp {
     {
         auto iter = m_mutex_map.find(data);
         if (iter == m_mutex_map.end()) {
-            mutex_p_t mutex(new mutex_t);
-            auto pair = std::make_pair(data, std::move(mutex));
-            auto result = m_mutex_map.insert(std::move(pair));
-            iter = result.first;
+            std::tie(iter, std::ignore) = m_mutex_map.emplace(data, std::make_unique<mutex_t>());
         }
 
         if (G_LIKELY(iter != m_mutex_map.end())) {
             if (access == CURL_LOCK_ACCESS_SINGLE) {
                 auto map_iter = m_writer_map.find(curl);
                 if (map_iter == m_writer_map.end()) {
-                    auto pair = std::make_pair(curl, writer_map_t());
-                    auto result = m_writer_map.insert(std::move(pair));
-                    map_iter = result.first;
+                    std::tie(map_iter, std::ignore) = m_writer_map.emplace(std::piecewise_construct,
+                                                                           std::forward_as_tuple(curl),
+                                                                           std::forward_as_tuple());
                 }
                 
                 if (G_LIKELY( map_iter != m_writer_map.end() )) {
-                    writer_lock_p_t lock(new writer_lock_t(*(iter->second)));
-                    auto pair = std::make_pair(data, std::move(lock));
-                    map_iter->second.insert(std::move(pair));
+                    map_iter->second.emplace(data, std::make_unique<writer_lock_t>(*(iter->second)));
                 } else {
                     g_error("CurlShare Error: Unable to create writer lock map!");
                 }
             } else if (access == CURL_LOCK_ACCESS_SHARED) {
                 auto map_iter = m_reader_map.find(curl);
                 if (map_iter == m_reader_map.end()) {
-                    auto pair = std::make_pair(curl, reader_map_t());
-                    auto result = m_reader_map.insert(std::move(pair));
-                    map_iter = result.first;
+                    std::tie(map_iter, std::ignore) = m_reader_map.emplace(std::piecewise_construct,
+                                                                           std::forward_as_tuple(curl),
+                                                                           std::forward_as_tuple());
                 }
 
                 if (G_LIKELY( map_iter != m_reader_map.end() )) {
-                    reader_lock_p_t lock(new reader_lock_t(*(iter->second)));
-                    auto pair = std::make_pair(data, std::move(lock));
-                    map_iter->second.insert(std::move(pair));
+                    map_iter->second.emplace(data, std::make_unique<reader_lock_t>(*(iter->second)));
                 } else {
                     g_error("CurlShare Error: Unable to create reader lock map!");
                 }
@@ -123,7 +116,7 @@ namespace Derp {
     }
 
     CurlEasy::CurlEasy(const std::shared_ptr<CurlShare>& share) :
-        m_error_buffer(new char[CURL_ERROR_SIZE]),
+        m_error_buffer(std::make_unique<char[]>(CURL_ERROR_SIZE)),
         m_share(share),
         m_curl(curl_easy_init())
     {

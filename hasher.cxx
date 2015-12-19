@@ -168,7 +168,7 @@ namespace Derp {
         std::lock_guard<std::mutex> lock(m_table_mutex);
         try {
             std::string hash;
-            enum { HASH_NODE, PATH_NODE, SIZE_NODE, OTHER_NODE } node;
+            enum { HASH_NODE, PATH_NODE, SIZE_NODE, OTHER_NODE } node = OTHER_NODE;
             while(reader.read() == 1) {
                 auto const type = reader.get_type();
                 if (type == XML_READER_TYPE_ELEMENT) {

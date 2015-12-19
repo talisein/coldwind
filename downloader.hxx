@@ -192,8 +192,8 @@ namespace Derp {
                             const CurlMulti::CurlMultiCallback& cb);
 
 	private:
-		Downloader& operator=(const Downloader&) = delete; // Evil func
-		Downloader(const Downloader&) = delete; // Evil func
+		Downloader& operator=(const Downloader&) = delete;
+		Downloader(const Downloader&) = delete;
 
         /** Callback from CurlMulti when curl has fetched url. Called
          * on GMainLoop.

@@ -1,6 +1,7 @@
 #include "application.hxx"
 #include "hasher.hxx"
 #include <iostream>
+
 Derp::Application::Application(int argc, char* argv[]) : 
 	Gtk::Application(argc, 
 	                 argv,

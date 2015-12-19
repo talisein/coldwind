@@ -19,12 +19,9 @@ Derp::WindowImpl* Derp::Window::createWindowImpl() {
 	Window_Gtk3* impl = nullptr;
 
 	try {
-		GtkBuilder* cbuilder = gtk_builder_new();
-		gtk_builder_add_from_resource(cbuilder, "/org/talinet/coldwind/overEngineering.glade", NULL);
-		Glib::RefPtr<Gtk::Builder> refBuilder = Glib::wrap(cbuilder);
-		refBuilder->get_widget_derived("coldwind_main_window", impl);
+		auto builder = Gtk::Builder::create_from_resource("/org/talinet/coldwind/overEngineering.glade");
+		builder->get_widget_derived("coldwind_main_window", impl);
 		impl->signal_new_request.connect( sigc::mem_fun(*this, &Derp::Window::startManager) );
-
 	} catch (const Glib::FileError& ex) {
 		std::cerr << "FileError: " << ex.what() << std::endl;
 		exit(EXIT_FAILURE);
@@ -36,7 +33,7 @@ Derp::WindowImpl* Derp::Window::createWindowImpl() {
 		exit(EXIT_FAILURE);
 	}
 	
-	return impl;
+	return dynamic_cast<Derp::WindowImpl*>(impl);
 }
 
 void Derp::Window::run() {

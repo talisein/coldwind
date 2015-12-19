@@ -26,8 +26,8 @@ configure_file (
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 set(CMAKE_BUILD_TYPE debug)
-set(CMAKE_CXX_FLAGS "-std=c++0x")
-set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -O0 -Wall -Wextra -pedantic" )
+set(CMAKE_CXX_FLAGS "-std=c++1y")
+set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -Og -Wall -Wextra -pedantic")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 find_package(CURL REQUIRED)
@@ -54,5 +54,5 @@ include_directories( ${INCLUDES} )
 
 add_executable(coldwind coldwind_resources.c main.cxx parser.cxx application.cxx hasher.cxx downloader.cxx lurker.cxx manager.cxx request.cxx window.cxx window_gtk3.cxx windowimpl.cxx xml_reader.cpp xml_writer.cpp horizon_post.c post.cpp)
 
-target_link_libraries(coldwind ${LIBS})
+target_link_libraries(coldwind ${LIBS} -lpthread)
 

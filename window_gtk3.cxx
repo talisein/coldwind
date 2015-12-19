@@ -23,8 +23,8 @@ namespace sigc {
 
 Derp::Window_Gtk3::Window_Gtk3(BaseObjectType* cobject,
                                const Glib::RefPtr<Gtk::Builder>& refBuilder) 
-	: Derp::WindowImpl(), 
-	  Gtk::Window(cobject),
+	: Gtk::Window(cobject),
+	  Derp::WindowImpl(),
       entryCompletion_(Gtk::EntryCompletion::create()),
       threadListStore_(Gtk::ListStore::create(completion_columns_)),
       completion_cancellable_(Gio::Cancellable::create()),
@@ -93,9 +93,7 @@ Derp::Window_Gtk3::Window_Gtk3(BaseObjectType* cobject,
     on_thread_toggled(); // Show/Hide the entryCompletion based on xml
 }
 
-Derp::Window_Gtk3::~Window_Gtk3() {
-	on_hide();
-}
+Derp::Window_Gtk3::~Window_Gtk3() = default;
 
 void Derp::Window_Gtk3::on_url_entry(guint, const gchar*, guint) {
   update_thread_dir_completer();

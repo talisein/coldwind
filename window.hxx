@@ -15,7 +15,7 @@ namespace Derp {
 		Window(const std::shared_ptr<Manager>&);
 
 		void run();
-		sigc::signal<void, const Request&> signal_new_request;
+
 		WindowImpl* getWindowImpl();
 
 	protected:

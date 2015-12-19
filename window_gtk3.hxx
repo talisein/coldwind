@@ -17,7 +17,7 @@
 
 
 namespace Derp {
-	class Window_Gtk3 final : public WindowImpl, public Gtk::Window {
+	class Window_Gtk3 final : public Gtk::Window, public WindowImpl {
 	public:
 		Window_Gtk3(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& refGlade);
 		virtual ~Window_Gtk3();
