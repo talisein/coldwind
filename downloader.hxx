@@ -5,7 +5,7 @@
 #include <vector>
 #include <stack>
 #include <queue>
-#include <mutex>
+#include <shared_mutex>
 #include <map>
 #include <curl/curl.h>
 #include <giomm/file.h>
@@ -53,20 +53,15 @@ namespace Derp {
         void unlock(CURL* curl, curl_lock_data data);
 
     private:
-        /* In C++14: std::mutex */
-        typedef Glib::Threads::RWLock                     mutex_t;
-        /* In C++14: std::shared_lock<std::mutex> */
-        typedef Glib::Threads::RWLock::ReaderLock         reader_lock_t;
-        /* In C++14: std::lock_guard<std::mutex> */
-        typedef Glib::Threads::RWLock::WriterLock         writer_lock_t;
+        /* In C++17: std::shared_mutex */
+        typedef std::shared_timed_mutex                 mutex_t;
+        typedef std::shared_lock<mutex_t>               reader_lock_t;
+        typedef std::unique_lock<mutex_t>               writer_lock_t;
 
-        typedef std::unique_ptr<mutex_t>                  mutex_p_t;
-        typedef std::unique_ptr<reader_lock_t>            reader_lock_p_t;
-        typedef std::unique_ptr<writer_lock_t>            writer_lock_p_t;
-        typedef std::map<curl_lock_data, reader_lock_p_t> reader_map_t;
-        typedef std::map<curl_lock_data, writer_lock_p_t> writer_map_t;
+        typedef std::map<curl_lock_data, reader_lock_t> reader_map_t;
+        typedef std::map<curl_lock_data, writer_lock_t> writer_map_t;
 
-        std::map<curl_lock_data, mutex_p_t>    m_mutex_map;
+        std::map<curl_lock_data, mutex_t>      m_mutex_map;
         std::map<CURL*, reader_map_t>          m_reader_map;
         std::map<CURL*, writer_map_t>          m_writer_map;
         std::unique_ptr<CURLSH, CURLSHDeleter> m_share;

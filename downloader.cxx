@@ -1,6 +1,7 @@
 #include "downloader.hxx"
 #include <algorithm>
 #include <iostream>
+
 namespace Derp {
     DownloadResult::DownloadResult() :
         had_error(false),
@@ -58,42 +59,44 @@ namespace Derp {
     CurlShare::lock(CURL* curl, curl_lock_data data, curl_lock_access access)
     {
         auto iter = m_mutex_map.find(data);
-        if (iter == m_mutex_map.end()) {
-            std::tie(iter, std::ignore) = m_mutex_map.emplace(data, std::make_unique<mutex_t>());
+        if (iter == std::end(m_mutex_map)) {
+            std::tie(iter, std::ignore) = m_mutex_map.emplace(std::piecewise_construct,
+                                                              std::forward_as_tuple(data),
+                                                              std::forward_as_tuple());
         }
 
-        if (G_LIKELY(iter != m_mutex_map.end())) {
-            if (access == CURL_LOCK_ACCESS_SINGLE) {
-                auto map_iter = m_writer_map.find(curl);
-                if (map_iter == m_writer_map.end()) {
-                    std::tie(map_iter, std::ignore) = m_writer_map.emplace(std::piecewise_construct,
-                                                                           std::forward_as_tuple(curl),
-                                                                           std::forward_as_tuple());
-                }
-                
-                if (G_LIKELY( map_iter != m_writer_map.end() )) {
-                    map_iter->second.emplace(data, std::make_unique<writer_lock_t>(*(iter->second)));
-                } else {
-                    g_error("CurlShare Error: Unable to create writer lock map!");
-                }
-            } else if (access == CURL_LOCK_ACCESS_SHARED) {
-                auto map_iter = m_reader_map.find(curl);
-                if (map_iter == m_reader_map.end()) {
-                    std::tie(map_iter, std::ignore) = m_reader_map.emplace(std::piecewise_construct,
-                                                                           std::forward_as_tuple(curl),
-                                                                           std::forward_as_tuple());
-                }
+        if (access == CURL_LOCK_ACCESS_SINGLE) {
+            auto map_iter = m_writer_map.find(curl);
+            if (map_iter == std::end(m_writer_map)) {
+                std::tie(map_iter, std::ignore) = m_writer_map.emplace(std::piecewise_construct,
+                                                                       std::forward_as_tuple(curl),
+                                                                       std::forward_as_tuple());
+            }
 
-                if (G_LIKELY( map_iter != m_reader_map.end() )) {
-                    map_iter->second.emplace(data, std::make_unique<reader_lock_t>(*(iter->second)));
-                } else {
-                    g_error("CurlShare Error: Unable to create reader lock map!");
-                }
-            } else {
-                g_error("CurlShare Error: Unexpected lock access type");
+            bool inserted;
+            std::tie(std::ignore, inserted) = map_iter->second.emplace(std::piecewise_construct,
+                                                                       std::forward_as_tuple(data),
+                                                                       std::forward_as_tuple(iter->second));
+            if (G_UNLIKELY(!inserted)) {
+                g_error("CurlShare Error: Double insertion of writer lock attempted");
+            }
+        } else if (G_LIKELY(access == CURL_LOCK_ACCESS_SHARED)) {
+            auto map_iter = m_reader_map.find(curl);
+            if (map_iter == std::end(m_reader_map)) {
+                std::tie(map_iter, std::ignore) = m_reader_map.emplace(std::piecewise_construct,
+                                                                       std::forward_as_tuple(curl),
+                                                                       std::forward_as_tuple());
+            }
+
+            bool inserted;
+            std::tie(std::ignore, inserted) = map_iter->second.emplace(std::piecewise_construct,
+                                                                       std::forward_as_tuple(data),
+                                                                       std::forward_as_tuple(iter->second));
+            if (G_UNLIKELY(!inserted)) {
+                g_error("CurlShare Error: Double insertion of reader lock attempted");
             }
         } else {
-            g_error("CurlShare Error: Unable to create lock!");
+            g_error("CurlShare Error: Unexpected lock access type");
         }
     }
 
