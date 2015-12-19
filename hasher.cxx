@@ -61,7 +61,9 @@ namespace Derp {
     void Hasher::hash_directory(const Glib::RefPtr<Gio::File>& dir)
     {
         constexpr std::array<char, 7> image_type{"image/"};
+        constexpr std::array<char, 11> webm_type{"video/webm"};
         constexpr auto image_type_len = image_type.size() - 1;
+        constexpr auto webm_type_len = webm_type.size() - 1;
         auto enumerator = dir->enumerate_children("standard::type,standard::name,standard::fast-content-type");
 
         for(auto info = enumerator->next_file(); info; info = enumerator->next_file()) {
@@ -69,8 +71,10 @@ namespace Derp {
                 continue;
 
             auto content_type = info->get_attribute_string(G_FILE_ATTRIBUTE_STANDARD_FAST_CONTENT_TYPE);
-            if (content_type.compare(0, image_type_len, image_type.data(), image_type_len) != 0)
+            if (content_type.compare(0, image_type_len, image_type.data(), image_type_len) != 0 &&
+                content_type.compare(0, webm_type_len, webm_type.data(), webm_type_len) != 0) {
                 continue;
+            }
 
             #if GLIB_CHECK_VERSION(2,36,0)
             auto file = enumerator->get_child(info);
