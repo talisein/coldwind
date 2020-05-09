@@ -56,7 +56,6 @@ Glib::RefPtr<Gio::File> Derp::Request::getHashDirectory() const {
 }
 
 Glib::RefPtr<Gio::File> Derp::Request::getDirectory() const {
-  // TODO: 
   Glib::RefPtr<Gio::File> dir = target_directory_;
 
   if ( useBoardSubdir_ ) {
@@ -116,7 +115,7 @@ namespace Derp {
     Request::get_api_url() const
     {
         std::stringstream ss;
-        ss << "http://api.4chan.org/";
+        ss << "https://a.4cdn.org/";
         ss << getBoard();
         ss << "/thread/";
         auto number = getThread();;

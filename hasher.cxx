@@ -100,7 +100,7 @@ namespace Derp {
                                                            length);
             insert_md5(md5hex, file->get_parse_name());
             g_free(contents);
-        } catch (Gio::Error e) {
+        } catch (Gio::Error& e) {
             std::cerr << "Error: While trying to load and hash " << file->get_parse_name()
                       << ": " << e.what() << " Code: " << e.code() <<std::endl;
         }
@@ -135,7 +135,7 @@ namespace Derp {
             if (!dirfile->query_exists()) {
                 try {
                     dirfile->make_directory_with_parents();
-                } catch (Gio::Error e) {
+                } catch (Gio::Error& e) {
                     std::cerr << "Hasher Error: Unable to create directory "
                               << dirfile->get_parse_name() << ": " << e.what()
                               << std::endl;
@@ -148,7 +148,7 @@ namespace Derp {
                           << " is not a directory. Will be unable to cache hashed file"
                           << " list to disk." << std::endl;
             }
-            
+
             return dirfile->get_child_for_display_name("hashed_files.xml");
         }
     }
@@ -160,14 +160,14 @@ namespace Derp {
         gsize length;
         try {
             file->load_contents(contents, length);
-        } catch (Gio::Error e) {
+        } catch (Gio::Error& e) {
             if (e.code() == Gio::Error::NOT_FOUND)
                 return;
             std::cerr << "Hasher Error: Could not load " << file->get_parse_name()
                       << ": " << e.what() << std::endl;
             return;
         }
-        
+
         XmlReader reader(std::string(contents, length));
         std::lock_guard<std::mutex> lock(m_table_mutex);
         try {
@@ -206,7 +206,7 @@ namespace Derp {
                 }
             }
             std::cerr << "Info: Hash Table contains " << m_hash_table.size() << " entries" << std::endl;
-        } catch (std::exception e) {
+        } catch (std::exception& e) {
             std::cerr << "Hasher Error: While reading XML on node "
                       << reader.get_name() << " value " << reader.get_value()
                       << ": " << e.what();
@@ -235,7 +235,7 @@ namespace Derp {
         try {
             std::string etag;
             file->replace_contents(writer.getString(), std::string(), etag, true, Gio::FILE_CREATE_PRIVATE);
-        } catch (Gio::Error e) {
+        } catch (Gio::Error& e) {
             std::cerr << "Hasher error: Unable to save hashed file cache to disk: "
                       << e.what() << std::endl;
         }

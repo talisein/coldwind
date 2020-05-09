@@ -22,7 +22,7 @@ namespace sigc {
 }
 
 Derp::Window_Gtk3::Window_Gtk3(BaseObjectType* cobject,
-                               const Glib::RefPtr<Gtk::Builder>& refBuilder) 
+                               const Glib::RefPtr<Gtk::Builder>& refBuilder)
 	: Gtk::Window(cobject),
 	  Derp::WindowImpl(),
       entryCompletion_(Gtk::EntryCompletion::create()),
@@ -102,7 +102,7 @@ void Derp::Window_Gtk3::on_url_entry(guint, const gchar*, guint) {
 void Derp::Window_Gtk3::on_board_toggled() {
   if ( !boardDirCheckbox_->get_active() && !threadDirCheckbox_->get_active())
     threadLabel_->set_visible(false);
-  else 
+  else
     threadLabel_->set_visible(true);
 
   update_thread_dir_completer();
@@ -111,13 +111,13 @@ void Derp::Window_Gtk3::on_board_toggled() {
 void Derp::Window_Gtk3::on_thread_toggled() {
   if ( !boardDirCheckbox_->get_active() && !threadDirCheckbox_->get_active())
     threadLabel_->set_visible(false);
-  else 
+  else
     threadLabel_->set_visible(true);
 
   if ( threadDirCheckbox_->get_active() ) {
     threadFolderEntry_->set_visible(true);
     update_thread_dir_completer();
-  } else { 
+  } else {
     threadFolderEntry_->set_visible(false);
   }
 }
@@ -147,14 +147,14 @@ void Derp::Window_Gtk3::update_thread_dir_completer() {
         threadListStore_->clear();
         return;
     }
-  
+
     Glib::RefPtr<Gio::File> basedir = fileChooserButton_->get_file();
     if (!basedir)
         return;
     Glib::RefPtr<Gio::File> dir;
     const Request req = { urlEntry_->get_text(), basedir, "", 0, 0, 0, true, true, true, false };
     threadFolderEntry_->set_text(req.getThread());
-  
+
     // Delete all the current completions
     threadListStore_->clear();
 
@@ -203,7 +203,7 @@ namespace Derp
                         lurk404Checkbox_->get_active());
         signal_new_request(request);
     }
-    
+
     void
     Window_Gtk3::activate_clear()
     {

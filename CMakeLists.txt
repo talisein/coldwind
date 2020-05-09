@@ -39,20 +39,27 @@ set(LIBS ${LIBS} ${LIBXML2_LIBRARIES})
 set(INCLUDES ${INCLUDES} ${LIBXML2_INCLUDE_DIR})
 add_definitions( ${LIBXML2_DEFINITIONS} )
 
-find_package(GTK3 3.4 REQUIRED gtk gtkmm gthread)
+find_package(PkgConfig)
+pkg_check_modules(GTK3 gtkmm-3.0)
 set(LIBS ${LIBS} ${GTK3_LIBRARIES})
 set(INCLUDES ${INCLUDES} ${GTK3_INCLUDE_DIRS})
 
-find_package(PkgConfig)
 pkg_check_modules(JSONGLIB json-glib-1.0)
 set(LIBS ${LIBS} ${JSONGLIB_LIBRARIES})
 set(INCLUDES ${INCLUDES} ${JSONGLIB_INCLUDE_DIRS})
 
-add_definitions( -D_GNU_SOURCE -DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_32 -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_32 )
+pkg_check_modules(HARFBUZZ harfbuzz)
+set(LIBS ${LIBS} ${HARFBUZZ_LIBRARIES})
+set(INCLUDES ${INCLUDES} ${HARFBUZZ_INCLUDE_DIRS})
+
+pkg_check_modules(SIGCPP sigc++-2.0)
+set(LIBS ${LIBS} ${SIGCPP_LIBRARIES})
+set(INCLUDES ${INCLUDES} ${SIGCPP_INCLUDE_DIRS})
+
+add_definitions( -D_GNU_SOURCE -DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_32 )
 
 include_directories( ${INCLUDES} )
 
 add_executable(coldwind coldwind_resources.c main.cxx parser.cxx application.cxx hasher.cxx downloader.cxx lurker.cxx manager.cxx request.cxx window.cxx window_gtk3.cxx windowimpl.cxx xml_reader.cpp xml_writer.cpp horizon_post.c post.cpp)
 
 target_link_libraries(coldwind ${LIBS} -lpthread)
-

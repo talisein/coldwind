@@ -21,7 +21,7 @@ namespace Derp {
         Derp::wrap_init();
     }
 
-    void 
+    void
     JsonParser::parse_async(const Request& request, const ParserCallback& cb)
     {
         auto const url = request.get_api_url();
@@ -97,8 +97,9 @@ namespace Derp {
 			Glib::RefPtr<Post> post = Glib::wrap(HORIZON_POST(cpost));
 			post->set_board(board);
 			post->set_thread_id(thread_id);
-            if (post->has_image() && !(post->is_deleted()))
+            if (post->has_image() && !(post->is_deleted())) {
                 result.posts.push_back(post);
+            }
 		}
 
         m_dispatcher(std::bind(cb, std::move(result), request));

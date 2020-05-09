@@ -369,10 +369,10 @@ horizon_post_dispose (GObject *gobject)
 {
 	//HorizonPost *self = HORIZON_POST (gobject);
 
-  /* 
+  /*
    * In dispose, you are supposed to free all types referenced from this
    * object which might themselves hold a reference to self. Generally,
-   * the most simple solution is to unref all members on which you own a 
+   * the most simple solution is to unref all members on which you own a
    * reference.
    */
 
@@ -440,7 +440,7 @@ horizon_post_class_init (HorizonPostClass *klass)
 	                       9999999999999 /* maximum value */,
 	                       1  /* default value */,
 	                       G_PARAM_READWRITE);
-  
+
   obj_properties[PROP_RESTO] =
 	  g_param_spec_int64 ("resto",
 	                       "Reply to",
@@ -688,11 +688,11 @@ horizon_post_class_init (HorizonPostClass *klass)
 	                       9999999999999 /* maximum value */,
 	                       1  /* default value */,
 	                       G_PARAM_READWRITE);
-  
+
   g_object_class_install_properties (gobject_class,
                                      N_PROPERTIES,
                                      obj_properties);
-  
+
 }
 
 
@@ -873,14 +873,14 @@ horizon_post_set_board (HorizonPost *post, const gchar *board) {
 	return post->priv->board = g_strdup(board);
 }
 
-gint64 
+gint64
 horizon_post_get_thread_id(const HorizonPost *post) {
 	g_return_val_if_fail (HORIZON_IS_POST (post), 0);
 
 	return post->priv->thread_id;
 }
 
-gint64 
+gint64
 horizon_post_set_thread_id(HorizonPost *post, const gint64 id) {
 	g_return_val_if_fail (HORIZON_IS_POST (post), 0);
 
@@ -894,7 +894,7 @@ horizon_post_get_thumb_url (HorizonPost *post) {
 	if (!post->priv->thumb_url) {
 		g_return_val_if_fail(post->priv->board, NULL);
 
-		post->priv->thumb_url = g_strdup_printf("http://t.4cdn.org/%s/%"
+		post->priv->thumb_url = g_strdup_printf("https://t.4cdn.org/%s/%"
 		                                        G_GINT64_FORMAT
 		                                        "s.jpg",
 		                                        post->priv->board,
@@ -921,7 +921,7 @@ horizon_post_get_image_url (HorizonPost *post) {
 	if (!post->priv->image_url) {
 		g_return_val_if_fail(post->priv->board, NULL);
 
-		post->priv->image_url = g_strdup_printf("http://i.4cdn.org/%s/"
+		post->priv->image_url = g_strdup_printf("https://i.4cdn.org/%s/"
 		                                        "%"G_GINT64_FORMAT
 		                                        "%s",
 		                                        post->priv->board,

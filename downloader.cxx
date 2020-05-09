@@ -14,7 +14,7 @@ namespace Derp {
 
     namespace {
         extern "C" {
-            static void 
+            static void
             lock_function(CURL *curl, curl_lock_data data, curl_lock_access access, void *userptr)
             {
                 auto share = static_cast<CurlShare*>(userptr);
@@ -40,7 +40,7 @@ namespace Derp {
                 g_error(ss.str().c_str());
             }
         };
-        
+
         auto code = curl_share_setopt(m_share.get(), CURLSHOPT_LOCKFUNC, &lock_function);
         check_code(code);
         code = curl_share_setopt(m_share.get(), CURLSHOPT_UNLOCKFUNC, &unlock_function);
@@ -135,7 +135,7 @@ namespace Derp {
             }
         }
     }
-    
+
     std::unique_ptr<std::string> CurlEasy::setup(const std::string& url)
     {
         bool setup_ok = true;
@@ -144,7 +144,7 @@ namespace Derp {
                 setup_ok = false;
             }
         };
-        
+
         std::unique_ptr<std::string> buffer(new std::string());
 
         auto code = curl_easy_setopt(m_curl.get(), CURLOPT_URL, url.c_str());
@@ -165,7 +165,7 @@ namespace Derp {
         check_code(code);
         code = curl_easy_setopt(m_curl.get(), CURLOPT_USERAGENT, "coldwind/1.0 (linux)");
         check_code(code);
-        
+
         if (setup_ok) {
             return buffer;
         } else {
@@ -179,7 +179,7 @@ namespace Derp {
     {
         active.send([this, url, cb, size_hint]{download(url, cb, size_hint);});
     }
-    
+
     void CurlEasy::download(const std::string& url,
                             const EasyCallback& cb,
                             const std::size_t size_hint)
@@ -190,15 +190,15 @@ namespace Derp {
         if (buffer) {
             buffer->reserve(size_hint);
             auto code = curl_easy_perform(m_curl.get());
-            if (code == CURLE_OK) {
+            curl_easy_getinfo(m_curl.get(), CURLINFO_SIZE_DOWNLOAD,  &info.size);
+            if (code == CURLE_OK && 0 != info.size) {
                 curl_easy_getinfo(m_curl.get(), CURLINFO_TOTAL_TIME,     &info.total_time);
-                curl_easy_getinfo(m_curl.get(), CURLINFO_SIZE_DOWNLOAD,  &info.size);
                 curl_easy_getinfo(m_curl.get(), CURLINFO_SPEED_DOWNLOAD, &info.speed);
             } else {
                 std::stringstream ss;
-                ss << "Failed downloading " << url << ": " << static_cast<char*>(m_error_buffer.get());
-                info.error_str = ss.str();
                 curl_easy_getinfo(m_curl.get(), CURLINFO_RESPONSE_CODE,  &info.error_code);
+                ss << "Failed downloading " << url << " (" << info.error_code << "): " << static_cast<char*>(m_error_buffer.get());
+                info.error_str = ss.str();
                 info.had_error = true;
             }
         } else {
@@ -275,12 +275,12 @@ namespace Derp {
         if (!m_curl_stack.empty())
             start_download_from_queue();
     }
-                      
+
     Downloader::Downloader() :
         m_curl_multi(COLDWIND_CURL_CONNECTIONS)
     {
     }
-    
+
     void Downloader::download_async(const std::string& url,
                                     const Glib::RefPtr<Gio::File>& target_dir,
                                     const std::string& filename,
@@ -303,7 +303,7 @@ namespace Derp {
     {
         m_curl_multi.download_url_async(url, cb);
     }
-                        
+
     namespace {
         static bool
         ensure_target_directory_exists(const Glib::RefPtr<Gio::File>& dir,
@@ -313,7 +313,7 @@ namespace Derp {
                 try {
                     dir->make_directory_with_parents();
                     return true;
-                } catch (Gio::Error e) {
+                } catch (Gio::Error& e) {
                     std::stringstream ss;
                     ss << "Unable to create directory " << dir->get_path() << ": "
                        << e.what();
@@ -349,7 +349,7 @@ namespace Derp {
         for (unsigned int i = 1; !fos; ++i) {
             try {
                 fos = file->create_file(Gio::FILE_CREATE_PRIVATE);
-            } catch (Gio::Error e) {
+            } catch (Gio::Error& e) {
                 auto const code = e.code();
                 if (code == Gio::Error::EXISTS || code == Gio::Error::IS_DIRECTORY) {
                     std::stringstream ss;
@@ -366,7 +366,7 @@ namespace Derp {
                 }
             }
         };
-        
+
         /* Write data to file */
         try {
             gsize written;
@@ -374,12 +374,12 @@ namespace Derp {
             fos->close();
             info.filename = file->get_path();
             m_dispatcher(std::bind(cb, info));
-        } catch (Gio::Error e) {
+        } catch (Gio::Error& e) {
             std::stringstream ss;
             ss << "Saving " << file->get_path() << " failed: " << e.what();
             try {
                 file->remove();
-            } catch (Gio::Error e) {
+            } catch (Gio::Error& e) {
                 ss << std::endl << "Also unable to cleanup corrupt file "
                    << file->get_path() << ": " << e.what();
             }
@@ -387,7 +387,7 @@ namespace Derp {
             info.error_str = ss.str();
             info.error_code = -2;
             m_dispatcher(std::bind(cb, info));
-        }        
+        }
     }
 
     void Downloader::download_complete_cb(std::string&& data,

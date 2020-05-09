@@ -42,10 +42,10 @@ void Derp::Lurker::iteration_next() {
   if (!m_manager->download_async(*iter, std::bind(&Derp::Lurker::manager_cb, this, std::placeholders::_1))) {
     std::cerr << "Error: Lurker tried to start a download of thread, but the manager is busy." << std::endl;
     iteration_finish(0);
-  } 
+  }
 }
 
-void 
+void
 Derp::Lurker::manager_cb(const std::shared_ptr<const ManagerResult>& result) {
     switch(result->state) {
         case ManagerResult::HASHING:
@@ -90,6 +90,7 @@ void Derp::Lurker::download_error(const Derp::Error& error) {
   case THREAD_PARSE_ERROR:
 	  std::cout << "Lurker caught a thread error." << std::endl;
 	  iteration_finish(0);
+      break;
   default:
 	  std::cout << "Lurker caught unknown error." << std::endl;
 	  iteration_finish(0);
@@ -116,7 +117,7 @@ void Derp::Lurker::iteration_finish(int num_downloaded) {
     int after = m_list.size();
 
     if (before != after) {
-      std::cout << "There were " << before << " threads being monitored, now only " 
+      std::cout << "There were " << before << " threads being monitored, now only "
 		<< after << " remain." << std::endl;
     }
 

@@ -38,6 +38,15 @@ namespace Derp {
     Manager::download_async(const Request& request, const ManagerCallback& cb)
     {
         auto result = std::make_shared<ManagerResult>();
+        if (!request.getHashDirectory()) {
+            result->had_error = true;
+            result->state = ManagerResult::ERROR;
+            result->request = request;
+            result->error_str = "Target directory is null";
+            cb(result);
+            return true;
+        }
+
         result->had_error = false;
         result->state = ManagerResult::HASHING;
         result->request = request;
@@ -56,7 +65,7 @@ namespace Derp {
 
         return true;
     }
-    
+
     void
     Manager::parse_cb(const ParserResult& parser_result,
                       const Request& request,
@@ -110,7 +119,7 @@ namespace Derp {
             }
             request_complete(result, cb);
         }
-                                                  
+
         auto callback = std::bind(&Manager::download_complete_cb,
                                   this,
                                   std::placeholders::_1,
@@ -203,13 +212,13 @@ namespace Derp {
     }
 
     bool
-    Manager::lurk_cooldown(std::vector<Manager::lurk_pair_t>& list) 
+    Manager::lurk_cooldown(std::vector<Manager::lurk_pair_t>& list)
     {
         if (list.size() > 0) {
             download_async(list.back().first, list.back().second);
             list.pop_back();
         }
-                
+
         if (list.size() > 0)
             return G_SOURCE_CONTINUE;
         else
