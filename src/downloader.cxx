@@ -55,46 +55,27 @@ namespace Derp {
         check_code(code);
     }
 
-    void
-    CurlShare::lock(CURL* curl, curl_lock_data data, curl_lock_access access)
+    CurlShare::mutex_t& CurlShare::get_mutex(curl_lock_data data)
     {
+        std::lock_guard<mutex_t> lock(m_mutex);
         auto iter = m_mutex_map.find(data);
         if (iter == std::end(m_mutex_map)) {
             std::tie(iter, std::ignore) = m_mutex_map.emplace(std::piecewise_construct,
                                                               std::forward_as_tuple(data),
                                                               std::forward_as_tuple());
         }
+        return iter->second;
+    }
+
+    void
+    CurlShare::lock(CURL* curl, curl_lock_data data, curl_lock_access access)
+    {
+        auto &mutex = get_mutex(data);
 
         if (access == CURL_LOCK_ACCESS_SINGLE) {
-            auto map_iter = m_writer_map.find(curl);
-            if (map_iter == std::end(m_writer_map)) {
-                std::tie(map_iter, std::ignore) = m_writer_map.emplace(std::piecewise_construct,
-                                                                       std::forward_as_tuple(curl),
-                                                                       std::forward_as_tuple());
-            }
-
-            bool inserted;
-            std::tie(std::ignore, inserted) = map_iter->second.emplace(std::piecewise_construct,
-                                                                       std::forward_as_tuple(data),
-                                                                       std::forward_as_tuple(iter->second));
-            if (G_UNLIKELY(!inserted)) {
-                g_error("CurlShare Error: Double insertion of writer lock attempted");
-            }
+            mutex.lock();
         } else if (G_LIKELY(access == CURL_LOCK_ACCESS_SHARED)) {
-            auto map_iter = m_reader_map.find(curl);
-            if (map_iter == std::end(m_reader_map)) {
-                std::tie(map_iter, std::ignore) = m_reader_map.emplace(std::piecewise_construct,
-                                                                       std::forward_as_tuple(curl),
-                                                                       std::forward_as_tuple());
-            }
-
-            bool inserted;
-            std::tie(std::ignore, inserted) = map_iter->second.emplace(std::piecewise_construct,
-                                                                       std::forward_as_tuple(data),
-                                                                       std::forward_as_tuple(iter->second));
-            if (G_UNLIKELY(!inserted)) {
-                g_error("CurlShare Error: Double insertion of reader lock attempted");
-            }
+            mutex.lock();
         } else {
             g_error("CurlShare Error: Unexpected lock access type");
         }
@@ -103,19 +84,8 @@ namespace Derp {
     void
     CurlShare::unlock(CURL* curl, curl_lock_data data)
     {
-        auto write_iter = m_writer_map.find(curl);
-        if (write_iter != m_writer_map.end()) {
-            auto lock_iter = write_iter->second.find(data);
-            if (lock_iter != write_iter->second.end())
-                write_iter->second.erase(lock_iter);
-        }
-
-        auto read_iter = m_reader_map.find(curl);
-        if (read_iter != m_reader_map.end()) {
-            auto lock_iter = read_iter->second.find(data);
-            if (lock_iter != read_iter->second.end())
-                read_iter->second.erase(lock_iter);
-        }
+        auto &mutex = get_mutex(data);
+        mutex.unlock();
     }
 
     CurlEasy::CurlEasy(const std::shared_ptr<CurlShare>& share) :
@@ -373,6 +343,7 @@ namespace Derp {
             fos->write_all(data, written);
             fos->close();
             info.filename = file->get_path();
+            info.file = file;
             m_dispatcher(std::bind(cb, info));
         } catch (Gio::Error& e) {
             std::stringstream ss;

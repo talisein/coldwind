@@ -1,0 +1,39 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#if ! __cplusplus
+#include <stdbool.h>
+#endif
+
+#define COLDWIND_WINDOWS (@COLDWIND_WINDOWS@)
+
+#if __cplusplus
+#include <string>
+namespace config {
+    using namespace std::string_literals;
+    static constexpr bool IS_WIN32 = @COLDWIND_WIN32@;
+    #if __cpp_lib_constexpr_string
+    static constexpr std::string PARTIAL_FILENAME_SUFFIX {".coldwind"s};
+    static constexpr std::string FOURCHAN_THUMB_CDN {"t.4cdn.org"s};
+    static constexpr std::string FOURCHAN_MEDIA_CDN {"i.4cdn.org"s};
+    static constexpr std::string FOURCHAN_JSON_CDN {"a.4cdn.org"s};
+    #else
+    static const std::string PARTIAL_FILENAME_SUFFIX {".coldwind"s};
+    static const std::string FOURCHAN_THUMB_CDN {"t.4cdn.org"s};
+    static const std::string FOURCHAN_MEDIA_CDN {"i.4cdn.org"s};
+    static const std::string FOURCHAN_JSON_CDN {"a.4cdn.org"s};
+    #endif
+}
+#endif
+
+#if __cplusplus
+extern "C" {
+#endif
+    const char * coldwind_config_get_thumb_cdn(void);
+    const char * coldwind_config_get_media_cdn(void);
+    const char * coldwind_config_get_json_cdn(void);
+#if __cplusplus
+}
+#endif
+
+#endif

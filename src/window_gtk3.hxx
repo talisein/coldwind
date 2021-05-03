@@ -30,21 +30,21 @@ namespace Derp {
 		void on_url_entry(guint, const gchar*, guint);
 		void on_board_toggled();
 		void on_thread_toggled();
-        
+
         void activate_new_request();
         void activate_clear();
 
 		virtual void on_hide();
 
 		void update_thread_dir_completer();
-        void update_thread_dir_foreach_info(const Glib::RefPtr<Gio::AsyncResult>&,
-                                            Glib::RefPtr<Gio::FileEnumerator>&);
+        void update_thread_dir_foreach_info(const Glib::RefPtr<Gio::AsyncResult>&);
+
 
         virtual void request_changed_state    (const std::shared_ptr<const ManagerResult>& result) override;
         virtual void request_download_complete(const std::shared_ptr<const ManagerResult>& result) override;
         virtual void request_error            (const std::shared_ptr<const ManagerResult>& result) override;
 
-        
+
 		Gtk::FileChooserButton* fileChooserButton_;
 		Gtk::CheckButton* boardDirCheckbox_;
 		Gtk::CheckButton* threadDirCheckbox_;
@@ -72,6 +72,7 @@ namespace Derp {
 		Glib::RefPtr<Gtk::EntryCompletion> entryCompletion_;
 		Glib::RefPtr<Gtk::ListStore> threadListStore_;
         Glib::RefPtr<Gio::Cancellable> completion_cancellable_;
+        Glib::RefPtr<Gio::FileEnumerator> enumerator;
 
         class RequestColumns : public Gtk::TreeModel::ColumnRecord {
         public:
@@ -85,10 +86,11 @@ namespace Derp {
             Gtk::TreeModelColumn<std::size_t> counted_errors;
             Gtk::TreeModelColumn<float> megabytes_fetched;
             Gtk::TreeModelColumn<Glib::ustring> state;
+            Gtk::TreeModelColumn<Request> req;
             RequestColumns() { add(request_id); add(title);
                 add(replies); add(images); add(fetching);
                 add(fetched); add(errors); add(counted_errors);
-                add(megabytes_fetched); add(state); };
+                add(megabytes_fetched); add(state); add(req); };
         } request_columns_;
         Glib::RefPtr<Gtk::ListStore> request_list_store_;
 	};

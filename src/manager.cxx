@@ -98,7 +98,7 @@ namespace Derp {
 
         auto posts = std::move(parser_result.posts);
         auto const is_valid = [this, request](const Glib::RefPtr<Post>& post)->bool {
-            return (!m_hasher.has_md5(post->get_hash_hex())
+            return (!m_hasher.has_md5(post->get_hash())
                     && post->get_width() >= request.get_min_width()
                     && post->get_height() >= request.get_min_height());
         };
@@ -155,6 +155,7 @@ namespace Derp {
         } else {
             result->had_error = false;
             ++(result->num_downloaded);
+            m_hasher.hash_one_async(info.file);
         }
         result->info = info;
         cb(result);

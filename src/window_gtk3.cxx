@@ -46,6 +46,8 @@ Derp::Window_Gtk3::Window_Gtk3(BaseObjectType* cobject,
     refBuilder->get_widget("status_bar", status_bar_);
     refBuilder->get_widget("new_request_button", new_request_button);
 
+    fileChooserButton_->set_current_folder(Glib::get_user_special_dir(Glib::UserDirectory::USER_DIRECTORY_DESKTOP));
+
     lurkAdjustment_ = Glib::RefPtr<Gtk::Adjustment>::cast_static(refBuilder->get_object("lurk_adjustment"));
     xAdjustment_    = Glib::RefPtr<Gtk::Adjustment>::cast_static(refBuilder->get_object("width_adjustment"));
     yAdjustment_    = Glib::RefPtr<Gtk::Adjustment>::cast_static(refBuilder->get_object("height_adjustment"));
@@ -83,6 +85,20 @@ Derp::Window_Gtk3::Window_Gtk3(BaseObjectType* cobject,
     request_tree_view_->append_column("Failed", request_columns_.errors);
     request_tree_view_->append_column_numeric("MiB", request_columns_.megabytes_fetched, "%0.2f");
     request_tree_view_->append_column("State", request_columns_.state);
+    request_tree_view_->signal_row_activated().connect([&](const Gtk::TreePath &path, Gtk::TreeViewColumn *column) -> void{
+        if (!path)
+            return;
+        auto iter = request_list_store_->get_iter(path);
+        auto req = iter->get_value(request_columns_.req);
+        try {
+            const std::vector<std::string> argv {"/usr/bin/feh", "-FZ", "."};
+
+            Glib::spawn_async(req.getDirectory()->get_path(), argv);
+        } catch (Glib::SpawnError &e) {
+            std::cerr << "failed to launch feh: " << e.what() << "\n";
+            return;
+        }
+    });
 
 
     urlEntry_->get_buffer()->signal_inserted_text().connect( sigc::mem_fun(*this, &Derp::Window_Gtk3::on_url_entry) );
@@ -121,23 +137,40 @@ void Derp::Window_Gtk3::on_thread_toggled() {
     threadFolderEntry_->set_visible(false);
   }
 }
+/*
+namespace {
+    extern "C" {
+        struct _foreach_info_data {
+            Glib::RefPtr<Gtk::ListStore> *store;
+            Gtk::TreeModelColumn<Glib::ustring> *filename;
+        };
 
-void Derp::Window_Gtk3::update_thread_dir_foreach_info(const Glib::RefPtr<Gio::AsyncResult>& result,
-                                                       Glib::RefPtr<Gio::FileEnumerator>& enumerator)
-{
-    auto info_list = enumerator->next_files_finish(result);
-    if (info_list.size() != 0) {
-        for ( const auto & info : info_list ) {
-            if (info->get_file_type() == Gio::FileType::FILE_TYPE_DIRECTORY) {
-                threadListStore_->append()->set_value(completion_columns_.filename, Glib::ustring(info->get_display_name()));
-            }
+        void _foreach_info(gpointer data, gpointer user_data) {
+            _foreach_info_data *d = static_cast<_foreach_info_data*>(user_data);
+            GFileInfo *info = static_cast<GFileInfo*>(data);
+            (*(d->store))->append()->set_value(*(d->filename), Glib::convert_const_gchar_ptr_to_ustring(g_file_info_get_display_name(info)));
         }
-        enumerator->next_files_async(sigc::bind(sigc::mem_fun(*this, &Derp::Window_Gtk3::update_thread_dir_foreach_info), enumerator));
-    } else {
-        enumerator->close_async(Glib::PRIORITY_DEFAULT, [enumerator](Glib::RefPtr<Gio::AsyncResult>& result) {
+    }
+}
+*/
+void Derp::Window_Gtk3::update_thread_dir_foreach_info(const Glib::RefPtr<Gio::AsyncResult>& result)
+{
+/*    auto info_list = enumerator->next_files_finish(result);
+    if (!info_list.empty()) {
+        GList *l = info_list.data();
+        _foreach_info_data d {&threadListStore_, &completion_columns_.filename};
+        g_list_foreach(l, _foreach_info, &d);
+
+
+//        for ( const auto & info : info_list ) {
+//            if (info->get_file_type() == Gio::FileType::FILE_TYPE_DIRECTORY) {
+//                threadListStore_->append()->set_value(completion_columns_.filename, Glib::ustring(info->get_display_name()));
+//            }
+
+        enumerator->close_async(Glib::PRIORITY_DEFAULT, [this](Glib::RefPtr<Gio::AsyncResult>& result) {
                 enumerator->close_finish(result);
             });
-    }
+    }*/
 }
 
 void Derp::Window_Gtk3::update_thread_dir_completer() {
@@ -168,13 +201,20 @@ void Derp::Window_Gtk3::update_thread_dir_completer() {
         dir = basedir;
     }
 
+    /*
     completion_cancellable_ = Gio::Cancellable::create();
-    dir->enumerate_children_async([this, dir](const Glib::RefPtr<Gio::AsyncResult>& result){
-            auto enumerator = dir->enumerate_children_finish(result);
+    dir->enumerate_children_async(
+        [this, dir](const Glib::RefPtr<Gio::AsyncResult>& result) {
+            enumerator = dir->enumerate_children_finish(result);
             if (!enumerator)
                 return;
-            enumerator->next_files_async(sigc::bind(sigc::mem_fun(*this, &Derp::Window_Gtk3::update_thread_dir_foreach_info), enumerator));
-        }, completion_cancellable_, "standard::type,standard::display-name");
+            enumerator->next_files_async(
+                [this] (const Glib::RefPtr<Gio::AsyncResult>& res) {
+                    update_thread_dir_foreach_info(res);
+                });
+        },
+        completion_cancellable_, "standard::type,standard::display-name");
+           */
 }
 
 void Derp::Window_Gtk3::run() {
@@ -243,6 +283,7 @@ namespace Derp
             iter->set_value(request_columns_.title, title);
             iter->set_value(request_columns_.request_id, result->request.get_request_id());
         }
+        iter->set_value(request_columns_.req, result->request);
 
         std::size_t num_downloading;
         std::size_t counted_errors;

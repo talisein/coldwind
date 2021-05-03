@@ -3,6 +3,7 @@
 #include <iostream>
 #include <glibmm/convert.h>
 #include <cstring>
+#include "config.h"
 
 Derp::Request::Request(const Glib::ustring& thread_url,
 		       const Glib::RefPtr<Gio::File>& target_directory,
@@ -115,7 +116,9 @@ namespace Derp {
     Request::get_api_url() const
     {
         std::stringstream ss;
-        ss << "https://a.4cdn.org/";
+        ss << "https://";
+        ss << config::FOURCHAN_JSON_CDN;
+        ss << '/';
         ss << getBoard();
         ss << "/thread/";
         auto number = getThread();;

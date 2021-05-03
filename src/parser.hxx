@@ -1,14 +1,14 @@
 #ifndef PARSER_HXX
 #define PARSER_HXX
 
-#include <vector>
+#include <list>
 #include "callback_dispatcher.hpp"
 #include "active.hpp"
+#include "post.hpp"
 
 namespace Derp {
 
     class Downloader;
-    class Post;
     class Request;
     struct DownloadResult;
     struct ParserResult;
@@ -17,8 +17,8 @@ namespace Derp {
     {
     public:
         JsonParser(const std::shared_ptr<Downloader>&);
-        
-        typedef std::vector<Glib::RefPtr<Post>> ImageList_t;
+
+        typedef std::list<Glib::RefPtr<Derp::Post>> ImageList_t;
 
         typedef std::function<void (const ParserResult&, const Request&)> ParserCallback;
         /** Return in cb a list of 4chan posts in the thread specified

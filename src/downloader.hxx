@@ -5,7 +5,7 @@
 #include <vector>
 #include <stack>
 #include <queue>
-#include <shared_mutex>
+#include <mutex>
 #include <map>
 #include <curl/curl.h>
 #include <giomm/file.h>
@@ -14,13 +14,14 @@
 #include "active.hpp"
 
 namespace Derp {
-    
+
     /** Statistical information for download.
      */
     struct DownloadResult {
         DownloadResult();
         std::string url;        /* The url that was attempted */
         std::string filename;   /* The actual filename saved to, if saved. */
+        Glib::RefPtr<Gio::File> file; /* Gio file saved to */
 
         bool        had_error;  /* True if an error occured */
         long        error_code; /* HTTP Code E.g. 404 */
@@ -53,17 +54,11 @@ namespace Derp {
         void unlock(CURL* curl, curl_lock_data data);
 
     private:
-        /* In C++17: std::shared_mutex */
-        typedef std::shared_timed_mutex                 mutex_t;
-        typedef std::shared_lock<mutex_t>               reader_lock_t;
-        typedef std::unique_lock<mutex_t>               writer_lock_t;
-
-        typedef std::map<curl_lock_data, reader_lock_t> reader_map_t;
-        typedef std::map<curl_lock_data, writer_lock_t> writer_map_t;
-
+        typedef std::mutex                     mutex_t;
+        mutex_t                                m_mutex;
         std::map<curl_lock_data, mutex_t>      m_mutex_map;
-        std::map<CURL*, reader_map_t>          m_reader_map;
-        std::map<CURL*, writer_map_t>          m_writer_map;
+        mutex_t& get_mutex(curl_lock_data);
+
         std::unique_ptr<CURLSH, CURLSHDeleter> m_share;
     };
 
@@ -82,7 +77,7 @@ namespace Derp {
         typedef std::pair<std::string, DownloadResult> ResultPair;
         typedef std::function<void (std::string&&, DownloadResult&&)> EasyCallback;
         CurlEasy(const std::shared_ptr<CurlShare>& share);
-        
+
         /** Attempts to fetch URL. download_complete is raised when
          * finished.
          *
@@ -194,7 +189,7 @@ namespace Derp {
          * on GMainLoop.
          */
         void download_complete_cb(std::string&& data,
-                                  DownloadResult&& info, 
+                                  DownloadResult&& info,
                                   const Glib::RefPtr<Gio::File>& target_dir,
                                   const std::string& filename,
                                   const DownloaderCallback& cb);

@@ -34,9 +34,9 @@ namespace Derp {
 
         /** Returns true if there is a file on disk with the given
          * checksum.
-         * 
+         *
          * Threadsafe.
-         */ 
+         */
         bool has_md5(const std::string& md5sum) const;
 
         /** Saves the known checksums to disk.
@@ -44,6 +44,10 @@ namespace Derp {
          * Blocking. Threadsafe.
          */
         void save_to_disk() const;
+
+        /** Hash one file
+         */
+        void hash_one_async(Glib::RefPtr<Gio::File> file);
 
     private:
         Hasher& operator=(const Hasher&) = delete;
@@ -67,7 +71,7 @@ namespace Derp {
         /** Returns true if the given path has been hashed.
          *
          * Threadsafe.
-         */ 
+         */
         bool has_file_path(const std::string& path) const;
 
         /** Loads the known checksums from disk

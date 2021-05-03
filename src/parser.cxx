@@ -18,7 +18,6 @@ namespace Derp {
     JsonParser::JsonParser(const std::shared_ptr<Downloader>& downloader) :
         m_downloader(downloader)
     {
-        Derp::wrap_init();
     }
 
     void
@@ -65,13 +64,31 @@ namespace Derp {
                 g_object_unref(parser);
             }
         };
+
+        extern "C" {
+            void _foreach_json_post(JsonArray *array,
+                                    guint index_,
+                                    JsonNode *element_node,
+                                    gpointer user_data)
+            {
+                ParserResult *result = static_cast<ParserResult*>(user_data);
+                GObject *cpost = json_gobject_deserialize( horizon_post_get_type(), element_node);
+                if (!cpost)
+                    return;
+                Glib::RefPtr<Post> post = Glib::wrap(HORIZON_POST(cpost));
+                if (!post)
+                    return;
+                if (post->has_image() && !(post->is_deleted())) {
+                    result->posts.push_back(post);
+                }
+            }
+        }
     }
 
     void
     JsonParser::parse(const std::string& json, const Request& request, const ParserCallback& cb)
     {
         ParserResult result;
-		std::vector<Glib::RefPtr<Post>> posts;
         std::unique_ptr< ::JsonParser, JsonParserDeleter> parser(json_parser_new());
         auto const board = request.getBoard();
         auto const thread_id = request.get_thread_id();
@@ -88,19 +105,12 @@ namespace Derp {
 
 		JsonObject *jsonobject = json_node_get_object(json_parser_get_root(parser.get()));
 		JsonArray *array = json_node_get_array(json_object_get_member(jsonobject, "posts"));
-		auto const num_posts = json_array_get_length(array);
-        result.posts.reserve(num_posts);
 
-		for ( guint i = 0; i < num_posts; ++i ) {
-			JsonNode *obj = json_array_get_element(array, i);
-			GObject *cpost =  json_gobject_deserialize( horizon_post_get_type(), obj );
-			Glib::RefPtr<Post> post = Glib::wrap(HORIZON_POST(cpost));
-			post->set_board(board);
-			post->set_thread_id(thread_id);
-            if (post->has_image() && !(post->is_deleted())) {
-                result.posts.push_back(post);
-            }
-		}
+        json_array_foreach_element(array, _foreach_json_post, &result);
+        for (auto &post : result.posts) {
+            post->set_board(board);
+            post->set_thread_id(thread_id);
+        }
 
         m_dispatcher(std::bind(cb, std::move(result), request));
     }

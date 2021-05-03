@@ -1,9 +1,9 @@
-// Derp
-
 #include "application.hxx"
 #include <curl/curl.h>
 #include <libxml/parser.h>
 #include <iostream>
+#include <gtkmm/main.h>
+#include "post.hpp"
 
 int main (int argc, char *argv[])
 {
@@ -13,7 +13,10 @@ int main (int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  LIBXML_TEST_VERSION
+  LIBXML_TEST_VERSION;
+
+  Gtk::Main::init_gtkmm_internals();
+  Derp::wrap_init();
 
   Derp::Application app(argc, argv);
   app.run();

@@ -58,6 +58,11 @@ namespace Derp {
         active.emplace([this, cb]{ m_dispatcher(cb); });
     }
 
+    void Hasher::hash_one_async(Glib::RefPtr<Gio::File> file)
+    {
+        active.emplace([this, file]{ hash_file(file); });
+    }
+
     void Hasher::hash_directory(const Glib::RefPtr<Gio::File>& dir)
     {
         constexpr std::array<char, 7> image_type{"image/"};
@@ -88,18 +93,39 @@ namespace Derp {
         enumerator->close();
     }
 
+    namespace {
+        struct GFreeDeleter {
+            void operator()(char *contents) const {
+                return g_free(contents);
+            }
+        };
+    }
+
     void Hasher::hash_file(const Glib::RefPtr<Gio::File>& file)
     {
-        char* contents;
-        gsize length;
-
         try {
-            file->load_contents(contents, length);
-            auto md5hex = Glib::Checksum::compute_checksum(Glib::Checksum::ChecksumType::CHECKSUM_MD5,
-                                                           reinterpret_cast<guchar*>(contents),
-                                                           length);
-            insert_md5(md5hex, file->get_parse_name());
-            g_free(contents);
+            // Load File
+            gsize length;
+            std::unique_ptr<char, GFreeDeleter> contents([&length, &file]{
+                char *c = nullptr;
+                file->load_contents(c, length);
+                return c;
+            }());
+
+            // Get MD5 checksum
+            Glib::Checksum cksum(Glib::Checksum::ChecksumType::CHECKSUM_MD5);
+            const auto cksum_len = Glib::Checksum::get_length(Glib::Checksum::ChecksumType::CHECKSUM_MD5);
+            cksum.update(reinterpret_cast<guchar*>(contents.get()), length);
+            auto digest = std::make_unique<guint8[]>(cksum_len);
+            gsize len = cksum_len;
+            cksum.get_digest(digest.get(), &len);
+
+            // Base64 encode the digest
+            const std::string digest_str(reinterpret_cast<char*>(digest.get()), len);
+            const auto base64 = Glib::Base64::encode(digest_str);
+
+            // Insert the base64 md5sum
+            insert_md5(base64, file->get_parse_name());
         } catch (Gio::Error& e) {
             std::cerr << "Error: While trying to load and hash " << file->get_parse_name()
                       << ": " << e.what() << " Code: " << e.code() <<std::endl;
@@ -129,8 +155,9 @@ namespace Derp {
         static Glib::RefPtr<Gio::File>
         get_local_file()
         {
+            using namespace std::string_literals;
             auto data_dir = Glib::get_user_data_dir();
-            auto dir = Glib::build_filename(data_dir, "coldwind");
+            auto dir = Glib::build_filename(data_dir, "coldwind"s);
             auto dirfile = Gio::File::create_for_path(dir);
             if (!dirfile->query_exists()) {
                 try {

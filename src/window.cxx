@@ -19,7 +19,7 @@ Derp::WindowImpl* Derp::Window::createWindowImpl() {
 	Window_Gtk3* impl = nullptr;
 
 	try {
-		auto builder = Gtk::Builder::create_from_resource("/org/talinet/coldwind/overEngineering.glade");
+		auto builder = Gtk::Builder::create_from_resource("/org/talinet/coldwind/coldwind.glade");
 		builder->get_widget_derived("coldwind_main_window", impl);
 		impl->signal_new_request.connect( sigc::mem_fun(*this, &Derp::Window::startManager) );
 	} catch (const Glib::FileError& ex) {
@@ -32,7 +32,7 @@ Derp::WindowImpl* Derp::Window::createWindowImpl() {
 		std::cerr << "MarkupError: " << ex.what() << std::endl;
 		exit(EXIT_FAILURE);
 	}
-	
+
 	return dynamic_cast<Derp::WindowImpl*>(impl);
 }
 
