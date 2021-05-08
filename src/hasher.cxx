@@ -16,7 +16,7 @@
 namespace Derp {
     Hasher::Hasher()
     {
-        active.emplace([this]{ load_from_disk(); });
+        active.push([this]{ load_from_disk(); });
     }
 
     Hasher::~Hasher()
@@ -26,7 +26,7 @@ namespace Derp {
 
     void Hasher::hash_async(const Request& request, const HasherCallback& cb)
     {
-        active.emplace([this, request, cb]{ hash(request, cb); });
+        active.push([this, request, cb]{ hash(request, cb); });
     }
 
     void Hasher::hash(const Request& request, const HasherCallback& cb)
@@ -55,27 +55,33 @@ namespace Derp {
             board_enumerator->close();
         }
 
-        active.emplace([this, cb]{ m_dispatcher(cb); });
+        active.push([this, cb]{ m_dispatcher(cb); });
     }
 
     void Hasher::hash_one_async(Glib::RefPtr<Gio::File> file)
     {
-        active.emplace([this, file]{ hash_file(file); });
+        active.push([this, file]{ hash_file(file); });
+    }
+
+    namespace {
+        const std::string ATTR_STANDARD_TYPE { G_FILE_ATTRIBUTE_STANDARD_TYPE };
+        const std::string ATTR_FAST_CONTENT_TYPE { G_FILE_ATTRIBUTE_STANDARD_FAST_CONTENT_TYPE };
+        const std::string ATTRS_TYPE_AND_NAME { "standard::type,standard::name,standard::fast-content-type" };
     }
 
     void Hasher::hash_directory(const Glib::RefPtr<Gio::File>& dir)
     {
+
         constexpr std::array<char, 7> image_type{"image/"};
         constexpr std::array<char, 11> webm_type{"video/webm"};
         constexpr auto image_type_len = image_type.size() - 1;
         constexpr auto webm_type_len = webm_type.size() - 1;
-        auto enumerator = dir->enumerate_children("standard::type,standard::name,standard::fast-content-type");
-
+        auto enumerator = dir->enumerate_children(ATTRS_TYPE_AND_NAME);
         for(auto info = enumerator->next_file(); info; info = enumerator->next_file()) {
             if ( info->get_file_type() != Gio::FileType::FILE_TYPE_REGULAR )
                 continue;
 
-            auto content_type = info->get_attribute_string(G_FILE_ATTRIBUTE_STANDARD_FAST_CONTENT_TYPE);
+            auto content_type = info->get_attribute_string(ATTR_FAST_CONTENT_TYPE);
             if (content_type.compare(0, image_type_len, image_type.data(), image_type_len) != 0 &&
                 content_type.compare(0, webm_type_len, webm_type.data(), webm_type_len) != 0) {
                 continue;
@@ -87,7 +93,8 @@ namespace Derp {
             auto file = dir->get_child(info->get_name());
             #endif
             if (!has_file_path(file->get_parse_name())) {
-                active.emplace([this, file]{ hash_file(file); });
+                auto cb = [this, file] { hash_file(file); };
+                active.push(cb);
             }
         }
         enumerator->close();
@@ -103,6 +110,16 @@ namespace Derp {
 
     void Hasher::hash_file(const Glib::RefPtr<Gio::File>& file)
     {
+        if (!file) {
+            std::cerr << "Error: Trying to hash a null file?\n";
+            return;
+        }
+
+        if (!file->query_exists()) {
+            std::cerr << "Error: Trying to hash non-existant " << file->get_parse_name() << '\n';
+            return;
+        }
+
         try {
             // Load File
             gsize length;
@@ -111,6 +128,11 @@ namespace Derp {
                 file->load_contents(c, length);
                 return c;
             }());
+
+            if (!contents) {
+                std::cerr << "Error: Failed to load " << file->get_parse_name() << '\n';
+                return;
+            }
 
             // Get MD5 checksum
             Glib::Checksum cksum(Glib::Checksum::ChecksumType::CHECKSUM_MD5);
@@ -128,7 +150,7 @@ namespace Derp {
             insert_md5(base64, file->get_parse_name());
         } catch (Gio::Error& e) {
             std::cerr << "Error: While trying to load and hash " << file->get_parse_name()
-                      << ": " << e.what() << " Code: " << e.code() <<std::endl;
+                      << ": " << e.what() << " Code: " << e.code() << '\n';
         }
     }
 
@@ -155,9 +177,8 @@ namespace Derp {
         static Glib::RefPtr<Gio::File>
         get_local_file()
         {
-            using namespace std::string_literals;
             auto data_dir = Glib::get_user_data_dir();
-            auto dir = Glib::build_filename(data_dir, "coldwind"s);
+            auto dir = Glib::build_filename(data_dir, "coldwind");
             auto dirfile = Gio::File::create_for_path(dir);
             if (!dirfile->query_exists()) {
                 try {
@@ -169,7 +190,7 @@ namespace Derp {
                 }
             }
 
-            auto info = dirfile->query_info(G_FILE_ATTRIBUTE_STANDARD_TYPE);
+            auto info = dirfile->query_info(ATTR_STANDARD_TYPE);
             if (info->get_file_type() != Gio::FILE_TYPE_DIRECTORY) {
                 std::cerr << "Hasher Error: " << dirfile->get_parse_name()
                           << " is not a directory. Will be unable to cache hashed file"
@@ -183,19 +204,24 @@ namespace Derp {
     void Hasher::load_from_disk()
     {
         auto file = get_local_file();
-        char* contents;
         gsize length;
-        try {
-            file->load_contents(contents, length);
-        } catch (Gio::Error& e) {
-            if (e.code() == Gio::Error::NOT_FOUND)
-                return;
-            std::cerr << "Hasher Error: Could not load " << file->get_parse_name()
-                      << ": " << e.what() << std::endl;
-            return;
-        }
 
-        XmlReader reader(std::string(contents, length));
+        std::unique_ptr<char, GFreeDeleter> contents([&length, &file]{
+            char *c = nullptr;
+            try {
+                file->load_contents(c, length);
+            } catch (Gio::Error& e) {
+                if (e.code() == Gio::Error::NOT_FOUND)
+                    return c;
+                std::cerr << "Hasher Error: Could not load " << file->get_parse_name()
+                          << ": " << e.what() << std::endl;
+                return c;
+            }
+            return c;
+        }());
+        if (!contents) return;
+
+        XmlReader reader(std::string(contents.get(), length));
         std::lock_guard<std::mutex> lock(m_table_mutex);
         try {
             std::string hash;
@@ -227,18 +253,18 @@ namespace Derp {
                         }
                     } else if (node == SIZE_NODE) {
                         auto size = std::stoull(reader.get_value());
+                        std::cerr << "Info: Starting to read " << size << " entries from " << file->get_parse_name() << '\n';
                         m_hash_table.reserve(size);
                         m_filepath_table.reserve(size);
                     }
                 }
             }
-            std::cerr << "Info: Hash Table contains " << m_hash_table.size() << " entries" << std::endl;
+            std::cerr << "Info: Hash Table contains " << m_hash_table.size() << " entries\n";
         } catch (std::exception& e) {
             std::cerr << "Hasher Error: While reading XML on node "
                       << reader.get_name() << " value " << reader.get_value()
-                      << ": " << e.what();
+                      << ": " << e.what() << '\n';
         }
-        g_free(contents);
     }
 
     void Hasher::save_to_disk() const

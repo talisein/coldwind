@@ -20,19 +20,19 @@
 
 namespace Derp {
 
-    XmlReader::XmlReader(const std::string& xml) :
+    XmlReader::XmlReader(const std::string& xml) noexcept:
         buf(xml),
         reader(xmlReaderForMemory(buf.c_str(), buf.size(), nullptr, nullptr, 0))
     {
     }
 
-    XmlReader::XmlReader(std::string&& xml) :
+    XmlReader::XmlReader(std::string&& xml) noexcept:
         buf(std::move(xml)),
         reader(xmlReaderForMemory(buf.c_str(), buf.size(), nullptr, nullptr, 0))
     {
     }
 
-    XmlReader::XmlReader(XmlReader&& xml_reader) :
+    XmlReader::XmlReader(XmlReader&& xml_reader) noexcept:
         buf(std::move(xml_reader.buf)),
         reader(std::move(xml_reader.reader))
     {
@@ -50,7 +50,7 @@ namespace Derp {
         auto str = reinterpret_cast<const char*>(xmlTextReaderConstName(reader.get()));
         if (str)
             return std::string(str);
-        else 
+        else
             return std::string();
     }
 
@@ -60,7 +60,7 @@ namespace Derp {
         auto str = reinterpret_cast<const char*>(xmlTextReaderConstValue(reader.get()));
         if (str)
             return std::string(str);
-        else 
+        else
             return std::string();
     }
 

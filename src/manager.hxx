@@ -2,7 +2,7 @@
 #define MANAGER_HXX
 #include <functional>
 #include <memory>
-#include <set>
+#include <map>
 #include <sigc++/signal.h>
 #include <glibmm/refptr.h>
 #include "downloader.hxx"
@@ -11,7 +11,7 @@
 #include "hasher.hxx"
 
 namespace Derp {
-  
+
 	enum Error {
 		THREAD_404,
 		DUPLICATE_FILE,
@@ -73,12 +73,6 @@ namespace Derp {
          */
         bool lurk();
 
-        /** Called every couple seconds when there is work to queue.
-         *
-         * Prevents calling the 4chan JSON API too quickly.
-         */
-        bool lurk_cooldown(std::vector<Manager::lurk_pair_t>& list);
-
         static constexpr int        LURK_INTERVAL_MINUTES = 5;
 
         Hasher                      m_hasher;
@@ -90,7 +84,7 @@ namespace Derp {
          *
          * Should only be modified on GMainLoop.
          */
-        std::set<lurk_pair_t, LurkPairComparitor>  m_lurk_list;
+        std::map<std::string, lurk_pair_t>         m_lurk_list;
         sigc::connection                           m_lurk_connection;
 	};
 }

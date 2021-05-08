@@ -89,7 +89,7 @@ namespace Derp {
     JsonParser::parse(const std::string& json, const Request& request, const ParserCallback& cb)
     {
         ParserResult result;
-        std::unique_ptr< ::JsonParser, JsonParserDeleter> parser(json_parser_new());
+        std::unique_ptr<::JsonParser, JsonParserDeleter> parser(json_parser_new());
         auto const board = request.getBoard();
         auto const thread_id = request.get_thread_id();
 		GError *merror = NULL;

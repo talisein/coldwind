@@ -10,7 +10,7 @@ namespace Derp {
 
     template <typename T> class message_queue {
     public:
-        message_queue<T>() = default;
+        message_queue() = default;
 
         template <typename U>
         void push(U&& u) {
@@ -32,7 +32,7 @@ namespace Derp {
             queue.emplace_back(std::forward<Args>(args)...);
             cond.notify_one();
         }
-            
+
         T pop() {
             std::unique_lock<std::mutex> lock(m);
             while (queue.empty()) {
@@ -59,24 +59,23 @@ namespace Derp {
         bool done;
         message_queue<Message> mq;
         std::unique_ptr<std::thread> thd;
- 
+
         void Run() {
             while( !done ) {
                 mq.pop()();
             } // note: last message sets done to true
         }
- 
+
     public:
          Active() : done(false) {
-            thd = std::unique_ptr<std::thread>(
-                new std::thread( std::mem_fn(&Active::Run), this ) );
+             thd = std::make_unique<std::thread>(std::mem_fn(&Active::Run), this);
         }
- 
+
         ~Active() {
             send_priority( [&]{ done = true; } ); ;
             thd->join();
         }
- 
+
         template <typename Functor>
         void send( Functor&& m ) {
             mq.push( std::forward<Functor>(m) );
@@ -90,6 +89,11 @@ namespace Derp {
         template <typename... Args>
         void emplace(Args&&... args) {
             mq.emplace(std::forward<Args>(args)...);
+        }
+
+        template <typename U>
+        void push(U&& u) {
+            mq.push(u);
         }
     };
 }

@@ -115,7 +115,7 @@ namespace Derp {
             }
         };
 
-        std::unique_ptr<std::string> buffer(new std::string());
+        std::unique_ptr<std::string> buffer = std::make_unique<std::string>();
 
         auto code = curl_easy_setopt(m_curl.get(), CURLOPT_URL, url.c_str());
         check_code(code);
@@ -186,7 +186,7 @@ namespace Derp {
     {
         auto share = std::make_shared<CurlShare>();
         for(int i = 0; i < max_connections; ++i) {
-            m_curl_stack.emplace(new CurlEasy(share));
+            m_curl_stack.emplace(std::make_unique<CurlEasy>(share));
         }
     }
 

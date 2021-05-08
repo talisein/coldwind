@@ -11,8 +11,8 @@ namespace Derp {
         CallbackDispatcher& operator=(const CallbackDispatcher&) = delete;
 
         CallbackDispatcher() {
-            m_dispatcher.connect(sigc::mem_fun(*this,
-                                               &CallbackDispatcher::on_dispatch));
+            m_dispatcher.connect([this]{on_dispatch();});
+
         };
 
         template<typename Fn>

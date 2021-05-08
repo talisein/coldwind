@@ -21,6 +21,11 @@ namespace sigc {
     SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 }
 
+namespace {
+    using namespace std::string_literals;
+    const std::vector<std::string> FEH_ARGV {"/usr/bin/feh"s, "-FZ"s, "."s};
+}
+
 Derp::Window_Gtk3::Window_Gtk3(BaseObjectType* cobject,
                                const Glib::RefPtr<Gtk::Builder>& refBuilder)
 	: Gtk::Window(cobject),
@@ -91,9 +96,7 @@ Derp::Window_Gtk3::Window_Gtk3(BaseObjectType* cobject,
         auto iter = request_list_store_->get_iter(path);
         auto req = iter->get_value(request_columns_.req);
         try {
-            const std::vector<std::string> argv {"/usr/bin/feh", "-FZ", "."};
-
-            Glib::spawn_async(req.getDirectory()->get_path(), argv);
+            Glib::spawn_async(req.getDirectory()->get_path(), FEH_ARGV);
         } catch (Glib::SpawnError &e) {
             std::cerr << "failed to launch feh: " << e.what() << "\n";
             return;

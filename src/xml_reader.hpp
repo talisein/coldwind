@@ -29,9 +29,9 @@ namespace Derp {
 
     class XmlReader {
     public:
-        XmlReader(const std::string& xml);
-        XmlReader(std::string&& xml);
-        XmlReader(XmlReader&& reader);
+        XmlReader(const std::string& xml) noexcept;
+        XmlReader(std::string&& xml) noexcept;
+        XmlReader(XmlReader&& reader) noexcept;
         XmlReader(const XmlReader&) = delete;
         void operator=(const XmlReader&) = delete;
 
@@ -46,7 +46,7 @@ namespace Derp {
                 xmlFreeTextReader(ptr);
             }
         };
-        
+
         const std::string buf;
         std::unique_ptr<xmlTextReader, XmlTextReaderDeleter> reader;
     };

@@ -19,8 +19,9 @@ namespace Derp {
 		        const bool useThreadSubdir,
 		        const bool useOriginalFilename,
 		        const bool lurk404);
-		Request() = default;
-        
+		Request() noexcept = default;
+        Request(const Request&) noexcept = default;
+
 		Glib::RefPtr<Gio::File> getDirectory() const;
 		Glib::RefPtr<Gio::File> getHashDirectory() const;
 		Glib::ustring getBoard() const;
@@ -51,7 +52,7 @@ namespace Derp {
 		bool lurkTo404_;
 		bool is404_;
 
-		friend bool operator<(const Derp::Image& image, 
+		friend bool operator<(const Derp::Image& image,
 		                      const Derp::Request& request);
 	};
 }

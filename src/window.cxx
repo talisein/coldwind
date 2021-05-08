@@ -14,12 +14,15 @@ Derp::WindowImpl* Derp::Window::getWindowImpl() {
 	return uwindowImpl_.get();
 }
 
+namespace {
+    const std::string resource_str {"/org/talinet/coldwind/coldwind.glade"};
+}
+
 Derp::WindowImpl* Derp::Window::createWindowImpl() {
 	// For now, just create GTK3 since that's the only impl
 	Window_Gtk3* impl = nullptr;
-
 	try {
-		auto builder = Gtk::Builder::create_from_resource("/org/talinet/coldwind/coldwind.glade");
+		auto builder = Gtk::Builder::create_from_resource(resource_str);
 		builder->get_widget_derived("coldwind_main_window", impl);
 		impl->signal_new_request.connect( sigc::mem_fun(*this, &Derp::Window::startManager) );
 	} catch (const Glib::FileError& ex) {
@@ -41,11 +44,10 @@ void Derp::Window::run() {
 }
 
 bool Derp::Window::startManager(const Request& request) {
-
-    bool is_accepted = manager_->download_async(request,
-                                               std::bind(&Derp::Window::manager_cb,
-                                                         this,
-                                                         std::placeholders::_1));
+    auto cb = [this](const std::shared_ptr<const ManagerResult> &result) {
+        manager_cb(result);
+    };
+    bool is_accepted = manager_->download_async(request, cb);
 
     return is_accepted;
 }

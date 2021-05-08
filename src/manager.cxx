@@ -23,8 +23,8 @@ namespace Derp {
         m_downloader(std::make_shared<Downloader>()),
         m_json_parser(m_downloader)
     {
-        m_lurk_connection = Glib::signal_timeout().connect_seconds(sigc::mem_fun(*this,
-                                                                                 &Manager::lurk),
+        auto cb = [this] { return lurk(); };
+        m_lurk_connection = Glib::signal_timeout().connect_seconds(cb,
                                                                    LURK_INTERVAL_MINUTES * 60,
                                                                    Glib::PRIORITY_LOW);
     }
@@ -170,15 +170,16 @@ namespace Derp {
                               const ManagerCallback& cb)
     {
         result->had_error = false;
-
-        auto pair = std::make_pair(result->request, cb);
-        auto iter = m_lurk_list.find(pair);
-        if (iter != m_lurk_list.end()) {
-            if (iter->first.get_request_id() != result->request.get_request_id()) {
+        const auto key = result->request.get_api_url();
+        if (auto iter = m_lurk_list.find(key);
+            iter != m_lurk_list.end())
+        {
+            lurk_pair_t& lurk_pair = iter->second;
+            if (lurk_pair.first.get_request_id() != result->request.get_request_id()) {
                 auto res = std::make_shared<ManagerResult>();
                 res->state = ManagerResult::DONE;
-                res->request = iter->first;
-                iter->second(res);
+                res->request = lurk_pair.first;
+                lurk_pair.second(res);
             }
             m_lurk_list.erase(iter);
         }
@@ -187,7 +188,7 @@ namespace Derp {
             result->state = ManagerResult::DONE;
         } else {
             result->state = ManagerResult::LURKING;
-            m_lurk_list.insert(std::move(pair));
+            m_lurk_list.try_emplace(key, result->request, cb);
         }
 
         cb(result);
@@ -196,33 +197,17 @@ namespace Derp {
     bool
     Manager::lurk()
     {
-        std::vector<lurk_pair_t> worklist;
-        worklist.reserve(m_lurk_list.size());
-        for ( auto & pair : m_lurk_list ) {
-            auto request = pair.first;
+        uint32_t seconds = 5;
+        for ( auto & [key, pair] : m_lurk_list ) {
+            auto & [request, cb] = pair;
             request.decrementMinutes(LURK_INTERVAL_MINUTES);
-            worklist.push_back(std::make_pair(request, pair.second));
-        }
-
-        if (worklist.size() > 0) {
-            auto fn = sigc::bind(sigc::mem_fun(*this, &Manager::lurk_cooldown), worklist);
-            Glib::signal_timeout().connect_seconds(fn, 5, Glib::PRIORITY_LOW);
+            const auto download_call = [this, request, cb] {
+                download_async(request, cb);
+                return G_SOURCE_REMOVE;
+            };
+            Glib::signal_timeout().connect_seconds(download_call, seconds, Glib::PRIORITY_LOW);
         }
 
         return G_SOURCE_CONTINUE;
-    }
-
-    bool
-    Manager::lurk_cooldown(std::vector<Manager::lurk_pair_t>& list)
-    {
-        if (list.size() > 0) {
-            download_async(list.back().first, list.back().second);
-            list.pop_back();
-        }
-
-        if (list.size() > 0)
-            return G_SOURCE_CONTINUE;
-        else
-            return G_SOURCE_REMOVE;
     }
 }
